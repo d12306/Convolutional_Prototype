@@ -1,4 +1,4 @@
-# Convolutional_prototype
+# Convolutional_Prototype
 
 main training entry: mnist_gcpl.py
 
