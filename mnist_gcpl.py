@@ -1,5 +1,3 @@
-# An example on MNIST to introduce how to train and test under GCPL
-
 from nets import *
 import functions as func
 import numpy as np
@@ -7,7 +5,6 @@ import tensorflow as tf
 import argparse
 import time
 import os
-# import cPickle as pickle
 from utils import *
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -52,13 +49,13 @@ def run_training():
         test_x, test_y = mnist.test.images.reshape(-1,1,28,28), mnist.test.labels
         train_num = train_x.shape[0]
         test_num = test_x.shape[0]
-
         # construct the computation graph
         images = tf.placeholder(tf.float32, shape=[None,1,28,28])
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
 
         features, logits = mnist_net(images)
+
     elif FLAGS.dataset == 'cifar10':
         xtrain, ytrain, xtest, ytest = load_cifar()
         train_x, train_y = xtrain.reshape(-1,32,32, 3), ytrain
@@ -162,7 +159,6 @@ def run_training():
 
         epoch += 1
         np.random.shuffle(list(index))
-
         time2 = time.time()
         print ('time for this epoch: {:.3f} minutes'.format((time2-time1)/60.0))
 
@@ -182,14 +178,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--learning_rate', type=float, default=0.001, help='initial learning rate')
     parser.add_argument('--batch_size', type=int, default=100, help='batch size for training')
-    parser.add_argument('--dataset', type=str, default='mnist', help='which kind of data we use')
+    parser.add_argument('--dataset', type=str, default='cifar10', help='which kind of data we use')
     parser.add_argument('--stop', type=int, default=100, help='stopping number')
     parser.add_argument('--decay', type=float, default=0.9, help='the value to decay the learning rate')
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
     parser.add_argument('--weight_pl', type=float, default=0.001, help='the weight for the prototype loss (PL)')
     parser.add_argument('--gpu', type=int, default=0, help='the gpu id for use')
     parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
-    parser.add_argument('--num_protos', type=int, default=2, help='the number of the protos')
+    parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=10, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
 

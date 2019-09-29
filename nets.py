@@ -57,9 +57,10 @@ def cifar_net1(images, keep_rates):
     conv7 = Conv(conv6, [1,1,192,10], activation=ReLU, regular=True)
 
     pool3 = tf.nn.avg_pool(conv7, [1,8,8,1], [1,8,8,1], 'SAME')
-    flatten = tf.reshape(pool3, [-1, 100])
-
-    logits = FC(flatten, 100, 10, regular=True)
+    # import ipdb
+    # ipdb.set_trace()
+    flatten = tf.reshape(pool3, [-1, 10])
+    logits = FC(flatten, 10, 10, regular=True)
     #no activation.
 
     return flatten, logits
