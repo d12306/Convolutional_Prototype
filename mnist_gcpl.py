@@ -67,9 +67,12 @@ def run_training():
         images = tf.placeholder(tf.float32, shape=[None,32,32, 3])
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
-        # model = Model_Resnet('train', FLAGS.num_classes)
-        features, logits = cifar_net1(images, [0.1,0.5,0.5])		
-        # feature, _ = model.build_model(images, 'train')
+
+        if FLAGS.model == 'resnet':
+            features, logits = inference(images, FLAGS.num_residual_blocks, reuse=False)
+        else:
+        	features, logits = cifar_net1(images, [0.1,0.5,0.5])		
+
 
 
     if FLAGS.loss == 'cpl': 
@@ -82,10 +85,18 @@ def run_training():
         loss = loss1 + FLAGS.weight_pl * loss2
         eval_correct = func.evaluation(features, labels, centers, FLAGS)
         train_op = func.training(loss, lr)
+
+        if FLAGS.model == 'resnet':
+            reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss += reg_losses 
+
     elif FLAGS.loss == "softmax":
         loss = func.softmax_loss(logits, labels)
         eval_correct = func.evaluation_softmax(logits, labels)
         train_op = func.training(loss, lr)
+        if FLAGS.model == 'resnet':
+            reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss += reg_losses 
      
     #counts = tf.get_variable('counts', [FLAGS.num_classes], dtype=tf.int32,
     #    initializer=tf.constant_initializer(0), trainable=False)
@@ -116,6 +127,7 @@ def run_training():
         score_now = 0.0
         loss_dce = 0.0
         loss_pl = 0.0
+        reg_loss = 0.0
 
     
         for i in range(batch_num):
@@ -124,26 +136,46 @@ def run_training():
             # mask_temp = compute_mask(FLAGS, batch_y)
 
             if FLAGS.loss == 'cpl': 
-                result = sess.run([train_op, loss, loss1, loss2, eval_correct],\
-             feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+                if FLAGS.model == 'resnet':
+                    result = sess.run([train_op, loss, loss1, loss2, eval_correct, reg_losses],\
+                    feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+                    reg_loss += result[5]
+                else:
+                    result = sess.run([train_op, loss, loss1, loss2, eval_correct],\
+                    feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+
                 loss_now += result[1]
                 score_now += result[4]
                 loss_dce += result[2]
                 loss_pl += result[3]
             elif FLAGS.loss == 'softmax':
-                result = sess.run([train_op, loss, eval_correct],\
-             feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+                if FLAGS.model == 'resnet':
+                    result = sess.run([train_op, loss, eval_correct, reg_losses],\
+                    feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+                    reg_loss += result[3]
+                else:
+                    result = sess.run([train_op, loss, eval_correct],\
+                    feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+
                 loss_now = result[1]
                 score_now += result[2]
 
         score_now /= train_num
 
         if FLAGS.loss == 'cpl':
-            print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f},\
-         acc --> {:.3f}%'.format(epoch, loss_now, loss_dce, loss_pl, score_now*100))
+            if FLAGS.model == 'resnet':
+               print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f}, reg_loss --> {:.3f},\
+                 acc --> {:.3f}%'.format(epoch, loss_now, loss_dce, loss_pl, reg_loss, score_now*100))
+            else:
+               print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f},\
+                 acc --> {:.3f}%'.format(epoch, loss_now, loss_dce, loss_pl, score_now*100))
         elif FLAGS.loss == 'softmax':
-            print ('epoch {}: training: loss --> {:.3f},\
-         acc --> {:.3f}%'.format(epoch, loss_now, score_now*100))        	
+            if FLAGS.model == 'resnet':
+                print ('epoch {}: training: loss --> {:.3f}, reg_loss --> {:.3f},\
+                   acc --> {:.3f}%'.format(epoch, loss_now, reg_loss, score_now*100)) 
+            else:
+                print ('epoch {}: training: loss --> {:.3f},\
+                   acc --> {:.3f}%'.format(epoch, loss_now, score_now*100))        	
         #print sess.run(centers)
     
         if loss_now > loss_before or score_now < score_before:
@@ -188,6 +220,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=10, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
+    parser.add_argument('--model', type=str, default='resnet', help='which model to use for training.')
+    parser.add_argument('--num_residual_blocks', type=int, default=5, help='the number of residual blocks in the resnet.')
 
     
 
@@ -206,6 +240,8 @@ if __name__ == '__main__':
     print ('number of protos:', FLAGS.num_protos )
     print ('printing steps:', FLAGS.print_step)
     print ('loss function:', FLAGS.loss)
+    print ('Model type:', FLAGS.model)
+    print ('number of residual blocks:', FLAGS.num_residual_blocks)
 
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
