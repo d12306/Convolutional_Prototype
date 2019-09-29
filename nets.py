@@ -2,7 +2,6 @@
 from tf_func import *
 
 ##################################################
-
 # net used for the MNIST dataset, also appeared in paper:
 # "A discriminative feature learning approach for deep
 # face recognition"
@@ -58,9 +57,9 @@ def cifar_net1(images, keep_rates):
     conv7 = Conv(conv6, [1,1,192,10], activation=ReLU, regular=True)
 
     pool3 = tf.nn.avg_pool(conv7, [1,8,8,1], [1,8,8,1], 'SAME')
-    flatten = tf.reshape(pool3, [-1, 10])
+    flatten = tf.reshape(pool3, [-1, 100])
 
-    logits = FC(flatten, 10, 10, regular=True)
+    logits = FC(flatten, 100, 10, regular=True)
     #no activation.
 
     return flatten, logits
