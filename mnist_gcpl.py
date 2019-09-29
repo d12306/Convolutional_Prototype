@@ -87,16 +87,21 @@ def run_training():
         train_op = func.training(loss, lr)
 
         if FLAGS.model == 'resnet':
-            reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-            loss += reg_losses 
+            reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+
+            loss +=  reg_losses
+            # import ipdb
+            # ipdb.set_trace()
+
 
     elif FLAGS.loss == "softmax":
         loss = func.softmax_loss(logits, labels)
         eval_correct = func.evaluation_softmax(logits, labels)
         train_op = func.training(loss, lr)
         if FLAGS.model == 'resnet':
-            reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-            loss += reg_losses 
+            reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+            loss += reg_losses
+
      
     #counts = tf.get_variable('counts', [FLAGS.num_classes], dtype=tf.int32,
     #    initializer=tf.constant_initializer(0), trainable=False)
