@@ -11,13 +11,22 @@ def distance(features, centers, flags):
     features = tf.tile(tf.expand_dims(tf.expand_dims(features, axis = 1),axis = 1), multiples= [1,flags.num_classes,flags.num_protos,1])
     centers = tf.tile(tf.expand_dims(centers, axis = 0), multiples = [flags.batch_size,1,1,1])
     dist = tf.norm(features - centers, axis = 3)
-
     # import ipdb
     # ipdb.set_trace()
     # f_2 = tf.reduce_sum(tf.pow(features, 2), axis=2, keep_dims=True)
     # c_2 = tf.reduce_sum(tf.pow(centers, 2), axis=2, keep_dims=True)
     # dist = f_2 - 2*tf.matmul(features, centers, transpose_b=True) + tf.transpose(c_2, perm=[1,0])
     return dist
+
+def dot_product(features, centers, flags):
+    features = tf.tile(tf.expand_dims(tf.expand_dims(features, axis = 1),axis = 1), multiples= [1,flags.num_classes,flags.num_protos,1])
+    centers = tf.tile(tf.expand_dims(centers, axis = 0), multiples = [flags.batch_size,1,1,1])
+    product = tf.multiply(features, centers)
+    product = tf.reduce_sum(product, axis = 3)
+    # import ipdb
+    # ipdb.set_trace()
+
+    return product
 
 # the cross entorpy loss for the traditional 
 # softmax layer based  neural networks
@@ -132,6 +141,35 @@ def dce_loss(features, labels, centers, T, flags):
 
     return mean_loss
 
+# dot product based cross entropy loss
+def dot_dce_loss(features, labels, centers, T, flags):
+    dist = dot_product(features, centers, flags)#50,10,5
+    mask = tf.one_hot(labels, flags.num_classes) 
+    mask_rep = tf.tile(tf.expand_dims(mask, axis = 2), multiples = [1,1,flags.num_protos])
+    dist_not_this_class, dist_this_class = tf.dynamic_partition(dist, tf.cast(mask_rep,tf.int32), 2)
+    dist_this_class = tf.reshape(dist_this_class, (-1, 1, flags.num_protos))
+    dist_not_this_class = tf.reshape(dist_not_this_class, (-1, flags.num_classes - 1, flags.num_protos))
+
+    dist_this_class_max = tf.reduce_min(dist_this_class, axis = 2)
+    dist_not_this_class_min = tf.reduce_max(dist_not_this_class, axis = 2)
+
+    dist_not_this_class_min = tf.reshape(dist_not_this_class_min, (-1,))
+    dist_this_class_max = tf.reshape(dist_this_class_max, (-1,))
+
+
+    condition_indices= tf.dynamic_partition(
+        tf.range(flags.num_classes * dist.shape[0]),\
+         tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
+
+    logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
+    logits = tf.reshape(logits, (-1,flags.num_classes))
+    logits = logits / T
+
+    mean_loss = softmax_loss(logits, labels)
+
+    return mean_loss
+
+
 # prototype loss (PL)
 def pl_loss(features, labels, centers, flags):
     batch_num = tf.cast(tf.shape(features)[0], tf.float32)
@@ -191,6 +229,33 @@ def evaluation(features, labels, centers, flags):
     correct = tf.equal(tf.cast(prediction, tf.int32), labels, name='correct')
     return tf.reduce_sum(tf.cast(correct, tf.float32), name='evaluation')
 
+
+# evaluation operation in CPL or GCPL framework
+def evaluation_dot_product(features, labels, centers, flags):
+    dist = dot_product(features, centers, flags)
+    mask = tf.one_hot(labels, flags.num_classes) 
+    mask_rep = tf.tile(tf.expand_dims(mask, axis = 2), multiples = [1,1,flags.num_protos])
+    dist_not_this_class, dist_this_class = tf.dynamic_partition(dist, tf.cast(mask_rep,tf.int32), 2)
+    dist_this_class = tf.reshape(dist_this_class, (-1, 1, flags.num_protos))
+    dist_not_this_class = tf.reshape(dist_not_this_class, (-1, flags.num_classes - 1, flags.num_protos))
+    dist_this_class_max = tf.reduce_max(dist_this_class, axis = 2)
+    dist_not_this_class_min = tf.reduce_min(dist_not_this_class, axis = 2)
+
+
+    dist_not_this_class_min = tf.reshape(dist_not_this_class_min, (-1,))
+    dist_this_class_max = tf.reshape(dist_this_class_max, (-1,))
+
+
+    condition_indices= tf.dynamic_partition(
+        tf.range(flags.num_classes * dist.shape[0]),\
+         tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
+    logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
+    logits = tf.reshape(logits, (-1,flags.num_classes))
+
+    prediction = tf.argmax(logits, axis=1, name='prediction')
+    correct = tf.equal(tf.cast(prediction, tf.int32), labels, name='correct')
+    return tf.reduce_sum(tf.cast(correct, tf.float32), name='evaluation')
+
 def evaluation_softmax(logits, labels):
     prediction = tf.argmax(logits, axis=1, name='prediction')
     correct = tf.equal(tf.cast(prediction, tf.int32), labels, name='correct')
@@ -201,8 +266,8 @@ def evaluation_softmax(logits, labels):
 def construct_center(features, num_classes, class_n, flags):
     len_features = features.get_shape()[1]
     centers = tf.get_variable('centers'+str(class_n), [flags.num_protos, len_features], dtype=tf.float32,\
-        # initializer=tf.constant_initializer(0.1*class_n))
-        initializer=tf.constant_initializer(0))
+        initializer=tf.constant_initializer(0.1*class_n))
+        # initializer=tf.constant_initializer(0))
     return centers
 
 # operations used to initialize the prototypes in

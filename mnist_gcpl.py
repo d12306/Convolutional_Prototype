@@ -64,7 +64,7 @@ def run_training():
         test_num = test_x.shape[0]
 
 	    # construct the computation graph
-        images = tf.placeholder(tf.float32, shape=[None,32,32, 3])
+        images = tf.placeholder(tf.float32, shape=[None,32,32,3])
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
 
@@ -80,16 +80,22 @@ def run_training():
         for i in range(FLAGS.num_classes):
             centers.append(func.construct_center(features, FLAGS.num_classes, i, FLAGS))
         centers = tf.stack(centers, 0)
-        loss1 = func.dce_loss(features, labels, centers, FLAGS.temp, FLAGS)
+
+        if FLAGS.use_dot_product:
+            loss1 = func.dot_dce_loss(features, labels, centers, FLAGS.temp, FLAGS)
+            eval_correct = func.evaluation_dot_product(features, labels, centers, FLAGS)
+        else:
+            loss1 = func.dce_loss(features, labels, centers, FLAGS.temp, FLAGS)
+            eval_correct = func.evaluation(features, labels, centers, FLAGS)
+
         loss2 = func.pl_loss(features, labels, centers, FLAGS)
         loss = loss1 + FLAGS.weight_pl * loss2
-        eval_correct = func.evaluation(features, labels, centers, FLAGS)
+        
         train_op = func.training(loss, lr)
 
         if FLAGS.model == 'resnet':
             reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-
-            loss +=  reg_losses
+            loss +=  0#reg_losses
             # import ipdb
             # ipdb.set_trace()
 
@@ -100,13 +106,11 @@ def run_training():
         train_op = func.training(loss, lr)
         if FLAGS.model == 'resnet':
             reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            loss += reg_losses
+            loss += 0#reg_losses
 
-     
     #counts = tf.get_variable('counts', [FLAGS.num_classes], dtype=tf.int32,
     #    initializer=tf.constant_initializer(0), trainable=False)
-    #add_op, count_op, average_op = net.init_centers(features, labels, centers, counts)
-    
+    #add_op, count_op, average_op = net.init_centers(features, labels, centers, counts)    
     init = tf.global_variables_initializer()
 
     # initialize the variables
@@ -153,6 +157,7 @@ def run_training():
                 score_now += result[4]
                 loss_dce += result[2]
                 loss_pl += result[3]
+
             elif FLAGS.loss == 'softmax':
                 if FLAGS.model == 'resnet':
                     result = sess.run([train_op, loss, eval_correct, reg_losses],\
@@ -219,7 +224,7 @@ if __name__ == '__main__':
     parser.add_argument('--stop', type=int, default=100, help='stopping number')
     parser.add_argument('--decay', type=float, default=0.9, help='the value to decay the learning rate')
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
-    parser.add_argument('--weight_pl', type=float, default=0.001, help='the weight for the prototype loss (PL)')
+    parser.add_argument('--weight_pl', type=float, default=1, help='the weight for the prototype loss (PL)')
     parser.add_argument('--gpu', type=int, default=0, help='the gpu id for use')
     parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
@@ -227,6 +232,7 @@ if __name__ == '__main__':
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
     parser.add_argument('--model', type=str, default='resnet', help='which model to use for training.')
     parser.add_argument('--num_residual_blocks', type=int, default=5, help='the number of residual blocks in the resnet.')
+    parser.add_argument('--use_dot_product', type=bool, default=True, help='what metric we use in cpl loss.')
 
     
 
@@ -247,7 +253,7 @@ if __name__ == '__main__':
     print ('loss function:', FLAGS.loss)
     print ('Model type:', FLAGS.model)
     print ('number of residual blocks:', FLAGS.num_residual_blocks)
-
+    print ('if use dot product:', FLAGS.use_dot_product)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 
