@@ -61,6 +61,7 @@ def cifar_net1(images, keep_rates):
     flatten = tf.reshape(pool3, [-1, 10])
 
     logits = FC(flatten, 10, 10, regular=True)
+    #no activation.
 
     return flatten, logits
 

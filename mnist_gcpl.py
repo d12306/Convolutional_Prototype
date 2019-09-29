@@ -13,7 +13,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 from tensorflow.examples.tutorials.mnist import input_data 
 mnist = input_data.read_data_sets("./MNIST_data", one_hot=False)
-
 FLAGS = None
 
 # compute accuracy on the test dataset
@@ -43,19 +42,6 @@ def compute_centers(sess, add_op, count_op, average_op, images_placeholder, labe
 
     sess.run(average_op)
 
-def compute_mask(flags, labels):
-    # import numpy as np
-    index = list(range(0,flags.num_classes))*flags.batch_size
-    index = np.asarray(index).reshape(flags.batch_size, flags.num_classes)
-
-    index = index.tolist()
-    # import ipdb
-    # ipdb.set_trace()
-    for i in range(flags.batch_size):
-        index[i].remove(labels[i])
-
-    return np.asarray(a)
-
 
 def run_training():
 
@@ -72,11 +58,9 @@ def run_training():
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
 
-        features, _ = mnist_net(images)
+        features, logits = mnist_net(images)
     elif FLAGS.dataset == 'cifar10':
         xtrain, ytrain, xtest, ytest = load_cifar()
-        # train_x, train_y = xtrain.reshape(-1,3,32,32), ytrain
-        # test_x, test_y = xtest.reshape(-1,3,32,32), ytest
         train_x, train_y = xtrain.reshape(-1,32,32, 3), ytrain
         test_x, test_y = xtest.reshape(-1,32,32,3), ytest
         train_num = train_x.shape[0]
@@ -87,22 +71,24 @@ def run_training():
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
         # model = Model_Resnet('train', FLAGS.num_classes)
-        features, _ = cifar_net1(images, [0.5,0.5,0.5])		
+        features, logits = cifar_net1(images, [0.1,0.5,0.5])		
         # feature, _ = model.build_model(images, 'train')
 
 
-
-    centers = []
-    for i in range(FLAGS.num_classes):
-    	centers.append(func.construct_center(features, FLAGS.num_classes, i, FLAGS))
-    centers = tf.stack(centers, 0)
-    # import ipdb
-    # ipdb.set_trace()
-    loss1 = func.dce_loss(features, labels, centers, FLAGS.temp, FLAGS)
-    loss2 = func.pl_loss(features, labels, centers, FLAGS)
-    loss = loss1 + FLAGS.weight_pl * loss2
-    eval_correct = func.evaluation(features, labels, centers, FLAGS)
-    train_op = func.training(loss, lr)
+    if FLAGS.loss == 'cpl': 
+        centers = []
+        for i in range(FLAGS.num_classes):
+            centers.append(func.construct_center(features, FLAGS.num_classes, i, FLAGS))
+        centers = tf.stack(centers, 0)
+        loss1 = func.dce_loss(features, labels, centers, FLAGS.temp, FLAGS)
+        loss2 = func.pl_loss(features, labels, centers, FLAGS)
+        loss = loss1 + FLAGS.weight_pl * loss2
+        eval_correct = func.evaluation(features, labels, centers, FLAGS)
+        train_op = func.training(loss, lr)
+    elif FLAGS.loss == "softmax":
+        loss = func.softmax_loss(logits, labels)
+        eval_correct = func.evaluation_softmax(logits, labels)
+        train_op = func.training(loss, lr)
      
     #counts = tf.get_variable('counts', [FLAGS.num_classes], dtype=tf.int32,
     #    initializer=tf.constant_initializer(0), trainable=False)
@@ -126,8 +112,6 @@ def run_training():
     batch_num = train_num//batch_size if train_num % batch_size==0 else train_num//batch_size+1
     #saver = tf.train.Saver(max_to_keep=1)
 
-
-    # epoch = 0
     # train the framework with the training data
     while stopping<FLAGS.stop:
         time1 = time.time()
@@ -141,19 +125,28 @@ def run_training():
             batch_x = train_x[index[i*batch_size:(i+1)*batch_size]]
             batch_y = train_y[index[i*batch_size:(i+1)*batch_size]]
             # mask_temp = compute_mask(FLAGS, batch_y)
-           
-            result = sess.run([train_op, loss, loss1, loss2, eval_correct],\
+
+            if FLAGS.loss == 'cpl': 
+                result = sess.run([train_op, loss, loss1, loss2, eval_correct],\
              feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
-            loss_now += result[1]
-            score_now += result[4]
-            loss_dce += result[2]
-            loss_pl += result[3]
-            # import ipdb
-            # ipdb.set_trace()
+                loss_now += result[1]
+                score_now += result[4]
+                loss_dce += result[2]
+                loss_pl += result[3]
+            elif FLAGS.loss == 'softmax':
+                result = sess.run([train_op, loss, eval_correct],\
+             feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+                loss_now = result[1]
+                score_now += result[2]
+
         score_now /= train_num
 
-        print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f},\
+        if FLAGS.loss == 'cpl':
+            print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f},\
          acc --> {:.3f}%'.format(epoch, loss_now, loss_dce, loss_pl, score_now*100))
+        elif FLAGS.loss == 'softmax':
+            print ('epoch {}: training: loss --> {:.3f},\
+         acc --> {:.3f}%'.format(epoch, loss_now, score_now*100))        	
         #print sess.run(centers)
     
         if loss_now > loss_before or score_now < score_before:
@@ -198,6 +191,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
     parser.add_argument('--num_protos', type=int, default=2, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=10, help='the number steps for printing.')
+    parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
+
     
 
     FLAGS, unparsed = parser.parse_known_args()
@@ -214,7 +209,8 @@ if __name__ == '__main__':
     print ('Data used:', FLAGS.dataset)
     print ('number of protos:', FLAGS.num_protos )
     print ('printing steps:', FLAGS.print_step)
-    
+    print ('loss function:', FLAGS.loss)
+
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 

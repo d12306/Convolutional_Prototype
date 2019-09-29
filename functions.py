@@ -191,13 +191,18 @@ def evaluation(features, labels, centers, flags):
     correct = tf.equal(tf.cast(prediction, tf.int32), labels, name='correct')
     return tf.reduce_sum(tf.cast(correct, tf.float32), name='evaluation')
 
+def evaluation_softmax(logits, labels):
+    prediction = tf.argmax(logits, axis=1, name='prediction')
+    correct = tf.equal(tf.cast(prediction, tf.int32), labels, name='correct')
+    return tf.reduce_sum(tf.cast(correct, tf.float32), name='evaluation')
 
 ##################################################
 # construct prototypes (centers) for each class
 def construct_center(features, num_classes, class_n, flags):
     len_features = features.get_shape()[1]
-    centers = tf.get_variable('centers'+str(class_n), [flags.num_protos, len_features], dtype=tf.float32,
-        initializer=tf.constant_initializer(0.1*class_n))
+    centers = tf.get_variable('centers'+str(class_n), [flags.num_protos, len_features], dtype=tf.float32,\
+        # initializer=tf.constant_initializer(0.1*class_n))
+        initializer=tf.constant_initializer(0))
     return centers
 
 # operations used to initialize the prototypes in
