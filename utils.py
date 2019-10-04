@@ -55,6 +55,46 @@ def load_cifar():
 
     return Xtrain_all, Ytrain_all, Xtest_test, Ytest_test
 
+def load_CIFAR_batch(filename, dataset):
+    """ load single batch of cifar """
+    with open(filename, 'rb')as f:
+        datadict = pickle.load(f,encoding='bytes')
+        #X = datadict[b'data']
+        #Y = datadict[b'labels']
+        #X = X.reshape(10000, 3, 32, 32)
+        X = datadict[b'data']
+        Y = datadict[b'coarse_labels']+datadict[b'fine_labels']
+        import ipdb
+        ipdb.set_trace()
+
+        if dataset == 'train':
+            X = X.reshape(50000, 3, 32, 32).transpose(0, 2, 3, 1)
+        else:
+            X = X.reshape(10000,3,32,32).transpose(0, 2, 3, 1)
+        X = np.array(X, dtype = np.int32)
+        Y = np.array(Y, dtype = np.int32)
+        return X, Y
+
+
+
+def load_cifar100():
+
+    filename_train = os.path.join('/home/xfdu/Convolutional-Prototype-Learning/cifar-100-python/', 'train')
+    filename_test = os.path.join('/home/xfdu/Convolutional-Prototype-Learning/cifar-100-python/', 'test')
+
+    Xtest_1, Ytest_1 = load_CIFAR_batch(filename_train, 'train')
+    Xtest_test, Ytest_test = load_CIFAR_batch(filename_test, 'test')
+
+    Xtrain_all = Xtest_1/255.
+    Ytrain_all = Ytest_1
+
+    Xtest_test = Xtest_test /255.
+    Ytest_test = Ytest_test
+    import ipdb
+    ipdb.set_trace()
+
+
+    return Xtrain_all, Ytrain_all, Xtest_test, Ytest_test
 
 # def load_cifar():
 #     filename_1 = os.path.join('/home/xfdu/OVA-master/cifar10/OVA-master/cifar10_challenge/cifar10_data/', 'data_batch_1')

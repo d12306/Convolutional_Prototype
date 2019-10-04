@@ -24,7 +24,7 @@ def visualize(feat, labels, epoch, centers, args):
 
     if not os.path.isdir('./images/'):  
         os.makedirs('./images/')
-    plt.savefig('./images/'+args.loss+'_'+args.dataset+'_epoch=%d.jpg' % epoch, dpi = 250)
+    plt.savefig('./images/'+args.loss+'_'+args.dataset+'_'+str(args.use_dot_product)+'_epoch=%d.jpg' % epoch, dpi = 250)
     # plt.draw()
     # plt.pause(0.001)
     plt.close()

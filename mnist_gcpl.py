@@ -71,10 +71,35 @@ def run_training():
         if FLAGS.model == 'resnet':
             features, logits = inference(images, FLAGS.num_residual_blocks, reuse=False)
         else:
+            features, logits = cifar_net1(images, [0.1,0.5,0.5])		
+
+    elif FLAGS.dataset == 'cifar100':
+        from keras.datasets import cifar100
+        (xtrain, ytrain), (xtest, ytest) = cifar100.load_data()
+        ytrain = np.squeeze(ytrain)
+        ytest = np.squeeze(ytest)
+        xtrain = xtrain.astype('float32')
+        xtrain = xtrain / 255.0
+        xtest = xtest.astype('float32')
+        xtest = xtest / 255.0
+        # xtrain, ytrain, xtest, ytest = load_cifar100()
+        train_x, train_y = xtrain.reshape(-1,32,32, 3), ytrain
+        test_x, test_y = xtest.reshape(-1,32,32,3), ytest
+        train_num = train_x.shape[0]
+        test_num = test_x.shape[0]
+
+	    # construct the computation graph
+        images = tf.placeholder(tf.float32, shape=[None,32,32,3])
+        labels = tf.placeholder(tf.int32, shape=[None])
+        lr= tf.placeholder(tf.float32)
+
+        if FLAGS.model == 'resnet':
+            features, logits = inference(images, FLAGS.num_residual_blocks, reuse=False)
+        else:
         	features, logits = cifar_net1(images, [0.1,0.5,0.5])		
 
-
-
+    # import ipdb
+    # ipdb.set_trace()
     if FLAGS.loss == 'cpl': 
         centers = []
         for i in range(FLAGS.num_classes):
@@ -175,7 +200,7 @@ def run_training():
                 loss_now = result[1]
                 score_now += result[2]
 
-        if FLAGS.loss == 'cpl':
+        if FLAGS.loss == 'cpl' and FLAGS.dataset == 'mnist':
             if epoch % FLAGS.print_step == 0:
                 centers_container = result[-2]
                 func.visualize(features_container, label_container, epoch, centers_container, FLAGS)
@@ -243,7 +268,7 @@ if __name__ == '__main__':
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
     parser.add_argument('--weight_pl', type=float, default=0.001, help='the weight for the prototype loss (PL)')
     parser.add_argument('--gpu', type=int, default=0, help='the gpu id for use')
-    parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
+    parser.add_argument('--num_classes', type=int, default=100, help='the number of the classes')
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=10, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
