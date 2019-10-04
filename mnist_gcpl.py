@@ -95,7 +95,7 @@ def run_training():
 
         if FLAGS.model == 'resnet':
             reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            loss +=  0#reg_losses
+            loss += 0#reg_losses
             # import ipdb
             # ipdb.set_trace()
 
@@ -104,19 +104,16 @@ def run_training():
         loss = func.softmax_loss(logits, labels)
         eval_correct = func.evaluation_softmax(logits, labels)
         train_op = func.training(loss, lr)
+
         if FLAGS.model == 'resnet':
             reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
             loss += 0#reg_losses
 
-    #counts = tf.get_variable('counts', [FLAGS.num_classes], dtype=tf.int32,
-    #    initializer=tf.constant_initializer(0), trainable=False)
-    #add_op, count_op, average_op = net.init_centers(features, labels, centers, counts)    
-    init = tf.global_variables_initializer()
 
+    init = tf.global_variables_initializer()
     # initialize the variables
     sess = tf.Session()
     sess.run(init)
-    #compute_centers(sess, add_op, count_op, average_op, images, labels, train_x, train_y)
 
     # run the computation graph (train and test process)
     epoch = 1
@@ -127,7 +124,7 @@ def run_training():
     np.random.shuffle(list(index))
     batch_size = FLAGS.batch_size
     batch_num = train_num//batch_size if train_num % batch_size==0 else train_num//batch_size+1
-    #saver = tf.train.Saver(max_to_keep=1)
+    saver = tf.train.Saver(max_to_keep=1)
 
     # train the framework with the training data
     while stopping<FLAGS.stop:
@@ -138,7 +135,7 @@ def run_training():
         loss_pl = 0.0
         reg_loss = 0.0
 
-    
+
         for i in range(batch_num):
             batch_x = train_x[index[i*batch_size:(i+1)*batch_size]]
             batch_y = train_y[index[i*batch_size:(i+1)*batch_size]]
@@ -146,17 +143,25 @@ def run_training():
 
             if FLAGS.loss == 'cpl': 
                 if FLAGS.model == 'resnet':
-                    result = sess.run([train_op, loss, loss1, loss2, eval_correct, reg_losses],\
+                    result = sess.run([train_op, loss, loss1, loss2, eval_correct, reg_losses, centers, features],\
                     feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
                     reg_loss += result[5]
+
                 else:
-                    result = sess.run([train_op, loss, loss1, loss2, eval_correct],\
+                    result = sess.run([train_op, loss, loss1, loss2, eval_correct, centers, features],\
                     feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
 
                 loss_now += result[1]
                 score_now += result[4]
                 loss_dce += result[2]
                 loss_pl += result[3]
+                if i == 0:
+                    features_container = np.asarray(result[-1])
+                    label_container = batch_y
+                else:
+                    features_container = np.concatenate((features_container, result[-1]), axis=0)
+                    label_container = np.concatenate((label_container, batch_y), axis=0)
+
 
             elif FLAGS.loss == 'softmax':
                 if FLAGS.model == 'resnet':
@@ -169,6 +174,12 @@ def run_training():
 
                 loss_now = result[1]
                 score_now += result[2]
+
+        if FLAGS.loss == 'cpl':
+            if epoch % FLAGS.print_step == 0:
+                centers_container = result[-2]
+                func.visualize(features_container, label_container, epoch, centers_container, FLAGS)
+
 
         score_now /= train_num
 
@@ -196,8 +207,7 @@ def run_training():
         loss_before = loss_now
         score_before = score_now
 
-        #checkpoint_file = os.path.join(FLAGS.log_dir, 'model.ckpt')
-        #saver.save(sess, checkpoint_file, global_step=epoch)
+
 
         epoch += 1
         np.random.shuffle(list(index))
@@ -210,7 +220,14 @@ def run_training():
             test_score = do_eval(sess, eval_correct, images, labels, test_x, test_y)
             print ('epoch:{}, accuracy on the test dataset: {:.3f}%'.format(epoch, test_score*100))
 
-        # epoch += 1
+        # saving the model.
+        if not os.path.isdir(os.path.join(FLAGS.log_dir, FLAGS.dataset)):  
+            os.makedirs(os.path.join(FLAGS.log_dir, FLAGS.dataset))
+        checkpoint_file = os.path.join(str(os.path.join(FLAGS.log_dir, FLAGS.dataset)),\
+         'model_'+FLAGS.loss+'_'+str(FLAGS.use_dot_product)+'_'+str(FLAGS.learning_rate)+'_'+str(FLAGS.batch_size)+'.ckpt')
+        saver.save(sess, checkpoint_file, global_step=epoch)
+        #saving the centers.
+
         
 
 
@@ -220,19 +237,20 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--learning_rate', type=float, default=0.001, help='initial learning rate')
     parser.add_argument('--batch_size', type=int, default=100, help='batch size for training')
-    parser.add_argument('--dataset', type=str, default='cifar10', help='which kind of data we use')
+    parser.add_argument('--dataset', type=str, default='mnist', help='which kind of data we use')
     parser.add_argument('--stop', type=int, default=100, help='stopping number')
     parser.add_argument('--decay', type=float, default=0.9, help='the value to decay the learning rate')
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
-    parser.add_argument('--weight_pl', type=float, default=1, help='the weight for the prototype loss (PL)')
+    parser.add_argument('--weight_pl', type=float, default=0.001, help='the weight for the prototype loss (PL)')
     parser.add_argument('--gpu', type=int, default=0, help='the gpu id for use')
     parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=10, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
-    parser.add_argument('--model', type=str, default='resnet', help='which model to use for training.')
-    parser.add_argument('--num_residual_blocks', type=int, default=5, help='the number of residual blocks in the resnet.')
-    parser.add_argument('--use_dot_product', type=bool, default=True, help='what metric we use in cpl loss.')
+    parser.add_argument('--model', type=str, default='original', help='which model to use for training.')
+    parser.add_argument('--num_residual_blocks', type=int, default=5, help='the number of residual blocks in the resnet.')#Resnet 6n+2
+    parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
+    parser.add_argument('--log_dir', type=str, default='./model', help='where to save the model.')
 
     
 
