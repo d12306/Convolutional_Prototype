@@ -4,6 +4,34 @@ import numpy as np
 import tensorflow as tf
 import pickle
 
+class data_augmentor(object):
+    """docstring for data_augmentor"""
+    def __init__(self, x):
+        super(data_augmentor, self).__init__()
+
+        self.x = x
+        # self.x = tf.image.random_hue(self.x, 0.08)
+        # self.x = tf.image.random_saturation(self.x, 0.6, 1.6)
+        # self.x = tf.image.random_brightness(self.x, 0.05)
+        # self.x = tf.image.random_contrast(self.x, 0.7, 1.3) 
+        padded = tf.map_fn(lambda img: tf.image.resize_image_with_crop_or_pad(
+            img, 32 + 4, 32 + 4),
+            self.x)
+        cropped = tf.map_fn(lambda img: tf.random_crop(img, [32,
+                                                             32,
+                                                             3]), padded)
+        flipped = tf.map_fn(lambda img: tf.image.random_flip_left_right(img), cropped)
+        # flipped = tf.map_fn(lambda img: tf.image.random_flip_up_down(img), flipped)
+
+        self.augmented = flipped
+        # self.augmented = tf.image.rot90(self.augmented)
+
+
+    def output(self, sess, x_train):
+
+        return sess.run(self.augmented, feed_dict={self.x: x_train})
+
+
 def load_cifar_datafile(filename):
   import pickle
   with open(filename, 'rb') as fo:
@@ -55,80 +83,7 @@ def load_cifar():
 
     return Xtrain_all, Ytrain_all, Xtest_test, Ytest_test
 
-def load_CIFAR_batch(filename, dataset):
-    """ load single batch of cifar """
-    with open(filename, 'rb')as f:
-        datadict = pickle.load(f,encoding='bytes')
-        #X = datadict[b'data']
-        #Y = datadict[b'labels']
-        #X = X.reshape(10000, 3, 32, 32)
-        X = datadict[b'data']
-        Y = datadict[b'coarse_labels']+datadict[b'fine_labels']
-        import ipdb
-        ipdb.set_trace()
 
-        if dataset == 'train':
-            X = X.reshape(50000, 3, 32, 32).transpose(0, 2, 3, 1)
-        else:
-            X = X.reshape(10000,3,32,32).transpose(0, 2, 3, 1)
-        X = np.array(X, dtype = np.int32)
-        Y = np.array(Y, dtype = np.int32)
-        return X, Y
-
-
-
-def load_cifar100():
-
-    filename_train = os.path.join('/home/xfdu/Convolutional-Prototype-Learning/cifar-100-python/', 'train')
-    filename_test = os.path.join('/home/xfdu/Convolutional-Prototype-Learning/cifar-100-python/', 'test')
-
-    Xtest_1, Ytest_1 = load_CIFAR_batch(filename_train, 'train')
-    Xtest_test, Ytest_test = load_CIFAR_batch(filename_test, 'test')
-
-    Xtrain_all = Xtest_1/255.
-    Ytrain_all = Ytest_1
-
-    Xtest_test = Xtest_test /255.
-    Ytest_test = Ytest_test
-    import ipdb
-    ipdb.set_trace()
-
-
-    return Xtrain_all, Ytrain_all, Xtest_test, Ytest_test
-
-# def load_cifar():
-#     filename_1 = os.path.join('/home/xfdu/OVA-master/cifar10/OVA-master/cifar10_challenge/cifar10_data/', 'data_batch_1')
-#     filename_2 = os.path.join('/home/xfdu/OVA-master/cifar10/OVA-master/cifar10_challenge/cifar10_data/', 'data_batch_2')
-#     filename_3 = os.path.join('/home/xfdu/OVA-master/cifar10/OVA-master/cifar10_challenge/cifar10_data/', 'data_batch_3')
-#     filename_4 = os.path.join('/home/xfdu/OVA-master/cifar10/OVA-master/cifar10_challenge/cifar10_data/', 'data_batch_4')
-#     filename_5 = os.path.join('/home/xfdu/OVA-master/cifar10/OVA-master/cifar10_challenge/cifar10_data/', 'data_batch_5')
-#     filename_test = os.path.join('/home/xfdu/OVA-master/cifar10/OVA-master/cifar10_challenge/cifar10_data/', 'test_batch')
-
-
-#     Xtest_1, Ytest_1 = load_cifar_datafile(filename_1)
-#     Xtest_2, Ytest_2 = load_cifar_datafile(filename_2)
-#     Xtest_3, Ytest_3 = load_cifar_datafile(filename_3)
-#     Xtest_4, Ytest_4 = load_cifar_datafile(filename_4)
-#     Xtest_5, Ytest_5 = load_cifar_datafile(filename_5)
-
-#     Xtest_test, Ytest_test = load_cifar_datafile(filename_test)
-
-#     Xtrain_all = Xtest_1
-#     Xtrain_all = np.concatenate((Xtrain_all, Xtest_2),axis = 0)
-#     Xtrain_all = np.concatenate((Xtrain_all, Xtest_3),axis = 0)
-#     Xtrain_all = np.concatenate((Xtrain_all, Xtest_4),axis = 0)
-#     Xtrain_all = np.concatenate((Xtrain_all, Xtest_5),axis = 0)
-
-#     Ytrain_all = Ytest_1
-#     Ytrain_all = np.concatenate((Ytrain_all, Ytest_2),axis = 0)
-#     Ytrain_all = np.concatenate((Ytrain_all, Ytest_3),axis = 0)
-#     Ytrain_all = np.concatenate((Ytrain_all, Ytest_4),axis = 0)
-#     Ytrain_all = np.concatenate((Ytrain_all, Ytest_5),axis = 0)
-
-#     Xtest_test = Xtest_test 
-#     Ytest_test = Ytest_test
-
-#     return Xtrain_all, Ytrain_all, Xtest_test, Ytest_test
 
 
 '''

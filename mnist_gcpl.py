@@ -25,6 +25,22 @@ def do_eval(sess, eval_correct, images, labels, test_x, test_y):
         true_count += sess.run(eval_correct, feed_dict={images:batch_x, labels:batch_y})
     
     return true_count / test_num
+# def do_eval(sess, eval_correct, images, labels, test_x, test_y, logits):
+#     true_count = 0.0
+#     test_num = test_y.shape[0]
+#     batch_size = FLAGS.batch_size
+#     batch_num = test_num // batch_size if test_num % batch_size == 0 else test_num // batch_size + 1
+    
+#     for i in range(batch_num):
+#         batch_x = test_x[i*batch_size:(i+1)*batch_size]
+#         batch_y = test_y[i*batch_size:(i+1)*batch_size]
+#         true_count += sess.run(eval_correct, feed_dict={images:batch_x, labels:batch_y})
+#         if i == 0:
+#            logits_all = np.asarray(sess.run(logits, feed_dict={images:batch_x, labels:batch_y}))
+#         else:
+#            logits_all = np.concatenate((logits_all, np.asarray(sess.run(logits, feed_dict={images:batch_x, labels:batch_y}))), axis = 0)
+    
+#     return true_count / test_num, logits_all
 
 # initialize the prototype with the mean vector (on the train dataset) of the corresponding class
 def compute_centers(sess, add_op, count_op, average_op, images_placeholder, labels_placeholder, train_x, train_y):
@@ -50,11 +66,17 @@ def run_training():
         train_num = train_x.shape[0]
         test_num = test_x.shape[0]
         # construct the computation graph
+        images_new = tf.placeholder(tf.float32, shape=[None,1,28,28])
         images = tf.placeholder(tf.float32, shape=[None,1,28,28])
+        features, logits = mnist_net(images)
+
+        if FLAGS.use_augmentation:
+            augment = data_augmentor(images_new)
+
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
 
-        features, logits = mnist_net(images)
+        
 
     elif FLAGS.dataset == 'cifar10':
         xtrain, ytrain, xtest, ytest = load_cifar()
@@ -65,13 +87,20 @@ def run_training():
 
 	    # construct the computation graph
         images = tf.placeholder(tf.float32, shape=[None,32,32,3])
+        images_new = tf.placeholder(tf.float32, shape=[None,32,32,3])
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
 
         if FLAGS.model == 'resnet':
+            if FLAGS.use_augmentation:
+                augment = data_augmentor(images_new)
             features, logits = inference(images, FLAGS.num_residual_blocks, reuse=False)
         else:
-            features, logits = cifar_net1(images, [0.1,0.5,0.5])		
+            if FLAGS.use_augmentation:
+                augment = data_augmentor(images_new)
+            features, logits = cifar_net1(images, [0.1,0.5,0.5])	
+
+
 
     elif FLAGS.dataset == 'cifar100':
         from keras.datasets import cifar100
@@ -94,9 +123,13 @@ def run_training():
         lr= tf.placeholder(tf.float32)
 
         if FLAGS.model == 'resnet':
+            if FLAGS.use_augmentation:
+                augment = data_augmentor(images_new)
             features, logits = inference(images, FLAGS.num_residual_blocks, reuse=False)
         else:
-        	features, logits = cifar_net1(images, [0.1,0.5,0.5])		
+            if FLAGS.use_augmentation:
+                augment = data_augmentor(images_new)
+            features, logits = cifar_net1(images, [0.1,0.5,0.5])	
 
     # import ipdb
     # ipdb.set_trace()
@@ -120,9 +153,7 @@ def run_training():
 
         if FLAGS.model == 'resnet':
             reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            loss += 0#reg_losses
-            # import ipdb
-            # ipdb.set_trace()
+            loss += FLAGS.weight_decay * reg_losses#reg_losses
 
 
     elif FLAGS.loss == "softmax":
@@ -132,7 +163,7 @@ def run_training():
 
         if FLAGS.model == 'resnet':
             reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            loss += 0#reg_losses
+            loss += FLAGS.weight_decay * reg_losses
 
 
     init = tf.global_variables_initializer()
@@ -168,11 +199,17 @@ def run_training():
 
             if FLAGS.loss == 'cpl': 
                 if FLAGS.model == 'resnet':
+                    if FLAGS.use_augmentation:
+                        batch_x = augment.output(sess, batch_x)
+
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, reg_losses, centers, features],\
                     feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
                     reg_loss += result[5]
 
                 else:
+                    if FLAGS.use_augmentation:
+                        batch_x = augment.output(sess, batch_x)
+
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, centers, features],\
                     feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
 
@@ -190,10 +227,16 @@ def run_training():
 
             elif FLAGS.loss == 'softmax':
                 if FLAGS.model == 'resnet':
+                    if FLAGS.use_augmentation:
+                        batch_x = augment.output(sess, batch_x)
+
                     result = sess.run([train_op, loss, eval_correct, reg_losses],\
                     feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
                     reg_loss += result[3]
                 else:
+                    if FLAGS.use_augmentation:
+                        batch_x = augment.output(sess, batch_x)
+
                     result = sess.run([train_op, loss, eval_correct],\
                     feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
 
@@ -242,6 +285,9 @@ def run_training():
 
         # test the framework with the test data
         if epoch % FLAGS.print_step == 0:
+            
+            # test_score, logits_test = do_eval(sess, eval_correct, images, labels, test_x, test_y, logits)
+            # np.save('./cifar10_logits.npy', logits_test)
             test_score = do_eval(sess, eval_correct, images, labels, test_x, test_y)
             print ('epoch:{}, accuracy on the test dataset: {:.3f}%'.format(epoch, test_score*100))
 
@@ -276,6 +322,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_residual_blocks', type=int, default=5, help='the number of residual blocks in the resnet.')#Resnet 6n+2
     parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
     parser.add_argument('--log_dir', type=str, default='./model', help='where to save the model.')
+    parser.add_argument('--weight_decay', type=float, default=0.0002, help='weight decay for resnet model.')
+    parser.add_argument('--use_augmentation', type=bool, default = True, help = 'whether to use data augmentation during training.')
 
     
 
@@ -297,6 +345,9 @@ if __name__ == '__main__':
     print ('Model type:', FLAGS.model)
     print ('number of residual blocks:', FLAGS.num_residual_blocks)
     print ('if use dot product:', FLAGS.use_dot_product)
+    print ('weight decay rate is: ', FLAGS.weight_decay)
+    print ('use data augmentation: ', FLAGS.use_augmentation)
+
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 
