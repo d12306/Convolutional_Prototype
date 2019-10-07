@@ -153,7 +153,7 @@ def run_training():
 
         if FLAGS.model == 'resnet':
             reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            loss += FLAGS.weight_decay * reg_losses#reg_losses
+            loss += 0#FLAGS.weight_decay * reg_losses#reg_losses
 
 
     elif FLAGS.loss == "softmax":
@@ -163,7 +163,7 @@ def run_training():
 
         if FLAGS.model == 'resnet':
             reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            loss += FLAGS.weight_decay * reg_losses
+            loss += 0#FLAGS.weight_decay * reg_losses
 
 
     init = tf.global_variables_initializer()
@@ -243,10 +243,11 @@ def run_training():
                 loss_now = result[1]
                 score_now += result[2]
 
-        if FLAGS.loss == 'cpl' and FLAGS.dataset == 'mnist':
-            if epoch % FLAGS.print_step == 0:
-                centers_container = result[-2]
-                func.visualize(features_container, label_container, epoch, centers_container, FLAGS)
+        # for visualization. 
+        # if FLAGS.loss == 'cpl' and FLAGS.dataset == 'mnist':
+        #     if epoch % FLAGS.print_step == 0:
+        #         centers_container = result[-2]
+        #         func.visualize(features_container, label_container, epoch, centers_container, FLAGS)
 
 
         score_now /= train_num
@@ -285,7 +286,6 @@ def run_training():
 
         # test the framework with the test data
         if epoch % FLAGS.print_step == 0:
-            
             # test_score, logits_test = do_eval(sess, eval_correct, images, labels, test_x, test_y, logits)
             # np.save('./cifar10_logits.npy', logits_test)
             test_score = do_eval(sess, eval_correct, images, labels, test_x, test_y)
@@ -299,8 +299,6 @@ def run_training():
         saver.save(sess, checkpoint_file, global_step=epoch)
         #saving the centers.
 
-        
-
 
     sess.close()
 
@@ -312,14 +310,14 @@ if __name__ == '__main__':
     parser.add_argument('--stop', type=int, default=100, help='stopping number')
     parser.add_argument('--decay', type=float, default=0.9, help='the value to decay the learning rate')
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
-    parser.add_argument('--weight_pl', type=float, default=0.001, help='the weight for the prototype loss (PL)')
+    parser.add_argument('--weight_pl', type=float, default=0.0001, help='the weight for the prototype loss (PL)')
     parser.add_argument('--gpu', type=int, default=0, help='the gpu id for use')
-    parser.add_argument('--num_classes', type=int, default=100, help='the number of the classes')
+    parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=10, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
-    parser.add_argument('--model', type=str, default='original', help='which model to use for training.')
-    parser.add_argument('--num_residual_blocks', type=int, default=5, help='the number of residual blocks in the resnet.')#Resnet 6n+2
+    parser.add_argument('--model', type=str, default='resnet', help='which model to use for training.')
+    parser.add_argument('--num_residual_blocks', type=int, default=6, help='the number of residual blocks in the resnet.')#Resnet 6n+2
     parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
     parser.add_argument('--log_dir', type=str, default='./model', help='where to save the model.')
     parser.add_argument('--weight_decay', type=float, default=0.0002, help='weight decay for resnet model.')

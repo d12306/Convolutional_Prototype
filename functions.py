@@ -13,20 +13,17 @@ def visualize(feat, labels, epoch, centers, args):
     plt.clf()
     for i in range(10):
         plt.plot(feat[labels == i, 0], feat[labels == i, 1], '.', c=c[i])
+        
     plt.legend(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], loc='upper right')
 
     for i in range(10):
         plt.plot(centers[i,:,0], centers[i,:,1], 'D', c=c[i])
 
-    #   plt.xlim(xmin=-5,xmax=5)
-    #   plt.ylim(ymin=-5,ymax=5)
     plt.text(-4.8, 4.6, "epoch=%d" % epoch)
 
     if not os.path.isdir('./images/'):  
         os.makedirs('./images/')
     plt.savefig('./images/'+args.loss+'_'+args.dataset+'_'+str(args.use_dot_product)+'_epoch=%d.jpg' % epoch, dpi = 250)
-    # plt.draw()
-    # plt.pause(0.001)
     plt.close()
 
 ##################################################
@@ -49,8 +46,6 @@ def dot_product(features, centers, flags):
     centers = tf.tile(tf.expand_dims(centers, axis = 0), multiples = [flags.batch_size,1,1,1])
     product = tf.multiply(features, centers)
     product = tf.reduce_sum(product, axis = 3)
-    # import ipdb
-    # ipdb.set_trace()
 
     return product
 
@@ -182,17 +177,13 @@ def dot_dce_loss(features, labels, centers, T, flags):
     dist_not_this_class_min = tf.reshape(dist_not_this_class_min, (-1,))
     dist_this_class_max = tf.reshape(dist_this_class_max, (-1,))
 
-
     condition_indices= tf.dynamic_partition(
         tf.range(flags.num_classes * dist.shape[0]),\
          tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
-
     logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
     logits = tf.reshape(logits, (-1,flags.num_classes))
     logits = logits / T
-
     mean_loss = softmax_loss(logits, labels)
-
     return mean_loss
 
 
@@ -212,6 +203,10 @@ def pl_loss(features, labels, centers, flags):
 ##################################################
 # return the training operation to train the network
 def training(loss, learning_rate):
+    # optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
+    # optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    # optimizer = tf.train.RMSPropOptimizer(1e-2)
+    # RMSPropOptimizer
     optimizer = tf.train.AdamOptimizer(learning_rate)
     train_op = optimizer.minimize(loss)
     return train_op
@@ -232,27 +227,29 @@ def predict(features, centers):
 # evaluation operation in CPL or GCPL framework
 def evaluation(features, labels, centers, flags):
     dist = distance(features, centers, flags)
-    mask = tf.one_hot(labels, flags.num_classes) 
-    mask_rep = tf.tile(tf.expand_dims(mask, axis = 2), multiples = [1,1,flags.num_protos])
-    dist_not_this_class, dist_this_class = tf.dynamic_partition(dist, tf.cast(mask_rep,tf.int32), 2)
-    dist_this_class = tf.reshape(dist_this_class, (-1, 1, flags.num_protos))
-    dist_not_this_class = tf.reshape(dist_not_this_class, (-1, flags.num_classes - 1, flags.num_protos))
-    dist_this_class_max = tf.reduce_min(dist_this_class, axis = 2)
-    dist_not_this_class_min = tf.reduce_max(dist_not_this_class, axis = 2)
+    # mask = tf.one_hot(labels, flags.num_classes) 
+    # mask_rep = tf.tile(tf.expand_dims(mask, axis = 2), multiples = [1,1,flags.num_protos])
+    # dist_not_this_class, dist_this_class = tf.dynamic_partition(dist, tf.cast(mask_rep,tf.int32), 2)
+    # dist_this_class = tf.reshape(dist_this_class, (-1, 1, flags.num_protos))
+    # dist_not_this_class = tf.reshape(dist_not_this_class, (-1, flags.num_classes - 1, flags.num_protos))
+    # dist_this_class_max = tf.reduce_min(dist_this_class, axis = 2)
+    # dist_not_this_class_min = tf.reduce_max(dist_not_this_class, axis = 2)
+    # dist_not_this_class_min = tf.reshape(dist_not_this_class_min, (-1,))
+    # dist_this_class_max = tf.reshape(dist_this_class_max, (-1,))
+    # condition_indices= tf.dynamic_partition(
+    #     tf.range(flags.num_classes * dist.shape[0]),\
+    #      tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
+    # logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
+    # logits = tf.reshape(logits, (-1,flags.num_classes))
+    # prediction = tf.argmin(logits, axis=1, name='prediction')
 
-
-    dist_not_this_class_min = tf.reshape(dist_not_this_class_min, (-1,))
-    dist_this_class_max = tf.reshape(dist_this_class_max, (-1,))
-
-
-    condition_indices= tf.dynamic_partition(
-        tf.range(flags.num_classes * dist.shape[0]),\
-         tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
-    logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
-    logits = tf.reshape(logits, (-1,flags.num_classes))
-
-    prediction = tf.argmin(logits, axis=1, name='prediction')
+    dist = tf.reshape(dist, [flags.batch_size, -1])
+    prediction = tf.argmin(dist, axis = 1) // flags.num_protos
+    # import ipdb
+    # ipdb.set_trace()
     correct = tf.equal(tf.cast(prediction, tf.int32), labels, name='correct')
+
+
     return tf.reduce_sum(tf.cast(correct, tf.float32), name='evaluation')
 
 
