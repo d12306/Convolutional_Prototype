@@ -83,7 +83,18 @@ def load_cifar():
 
     return Xtrain_all, Ytrain_all, Xtest_test, Ytest_test
 
-
+def top_k_error(self, predictions, labels, k):
+    '''
+    Calculate the top-k error
+    :param predictions: 2D tensor with shape [batch_size, num_labels]
+    :param labels: 1D tensor with shape [batch_size, 1]
+    :param k: int
+    :return: tensor with shape [1]
+    '''
+    batch_size = predictions.get_shape().as_list()[0]
+    in_top1 = tf.to_float(tf.nn.in_top_k(predictions, labels, k=1))
+    num_correct = tf.reduce_sum(in_top1)
+    return (batch_size - num_correct) / float(batch_size)
 
 
 '''
@@ -101,7 +112,9 @@ def activation_summary(x):
     tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
 
-def create_variables(name, shape, initializer=tf.contrib.layers.xavier_initializer(), is_fc_layer=False):
+def create_variables(name, shape, weight_decay,initializer=tf.contrib.layers.variance_scaling_initializer(), is_fc_layer=False):
+    
+    # tf.contrib.layers.xavier_initializer()
     '''
     :param name: A string. The name of the new variable
     :param shape: A list of dimensions
@@ -112,23 +125,24 @@ def create_variables(name, shape, initializer=tf.contrib.layers.xavier_initializ
     '''
     
     ## TODO: to allow different weight decay to fully connected layer and conv layer
-    regularizer = tf.contrib.layers.l2_regularizer(scale=0.0002)
+    regularizer = tf.contrib.layers.l2_regularizer(scale=weight_decay)
 
     new_variables = tf.get_variable(name, shape=shape, initializer=initializer,
                                     regularizer=regularizer)
     return new_variables
 
 
-def output_layer(input_layer, num_labels):
+def output_layer(input_layer, num_labels, weight_decay):
     '''
     :param input_layer: 2D tensor
     :param num_labels: int. How many output labels in total? (10 for cifar10 and 100 for cifar100)
     :return: output layer Y = WX + B
     '''
     input_dim = input_layer.get_shape().as_list()[-1]
-    fc_w = create_variables(name='fc_weights', shape=[input_dim, num_labels], is_fc_layer=True,
-                            initializer=tf.uniform_unit_scaling_initializer(factor=1.0))
-    fc_b = create_variables(name='fc_bias', shape=[num_labels], initializer=tf.zeros_initializer())
+    fc_w = create_variables(name='fc_weights', weight_decay = weight_decay, shape=[input_dim, num_labels], is_fc_layer=True,
+                            #initializer=tf.uniform_unit_scaling_initializer(factor=1.0))
+                            initializer=tf.contrib.layers.variance_scaling_initializer())
+    fc_b = create_variables(name='fc_bias', weight_decay = weight_decay, shape=[num_labels], initializer=tf.zeros_initializer())
 
     fc_h = tf.matmul(input_layer, fc_w) + fc_b
     return fc_h
@@ -151,7 +165,7 @@ def batch_normalization_layer(input_layer, dimension):
     return bn_layer
 
 
-def conv_bn_relu_layer(input_layer, filter_shape, stride):
+def conv_bn_relu_layer(input_layer, filter_shape, stride, weight_decay):
     '''
     A helper function to conv, batch normalize and relu the input tensor sequentially
     :param input_layer: 4D tensor
@@ -161,7 +175,7 @@ def conv_bn_relu_layer(input_layer, filter_shape, stride):
     '''
 
     out_channel = filter_shape[-1]
-    filter = create_variables(name='conv', shape=filter_shape)
+    filter = create_variables(name='conv', weight_decay = weight_decay, shape=filter_shape)
 
     conv_layer = tf.nn.conv2d(input_layer, filter, strides=[1, stride, stride, 1], padding='SAME')
     bn_layer = batch_normalization_layer(conv_layer, out_channel)
@@ -170,7 +184,7 @@ def conv_bn_relu_layer(input_layer, filter_shape, stride):
     return output
 
 
-def bn_relu_conv_layer(input_layer, filter_shape, stride):
+def bn_relu_conv_layer(input_layer, filter_shape, stride, weight_decay):
     '''
     A helper function to batch normalize, relu and conv the input layer sequentially
     :param input_layer: 4D tensor
@@ -184,13 +198,13 @@ def bn_relu_conv_layer(input_layer, filter_shape, stride):
     bn_layer = batch_normalization_layer(input_layer, in_channel)
     relu_layer = tf.nn.relu(bn_layer)
 
-    filter = create_variables(name='conv', shape=filter_shape)
+    filter = create_variables(name='conv', weight_decay = weight_decay, shape=filter_shape)
     conv_layer = tf.nn.conv2d(relu_layer, filter, strides=[1, stride, stride, 1], padding='SAME')
     return conv_layer
 
 
 
-def residual_block(input_layer, output_channel, first_block=False):
+def residual_block(input_layer, output_channel, weight_decay, first_block=False):
     '''
     Defines a residual block in ResNet
     :param input_layer: 4D tensor
@@ -213,13 +227,13 @@ def residual_block(input_layer, output_channel, first_block=False):
     # The first conv layer of the first residual block does not need to be normalized and relu-ed.
     with tf.variable_scope('conv1_in_block'):
         if first_block:
-            filter = create_variables(name='conv', shape=[3, 3, input_channel, output_channel])
+            filter = create_variables(name='conv', weight_decay = weight_decay, shape=[3, 3, input_channel, output_channel])
             conv1 = tf.nn.conv2d(input_layer, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
         else:
-            conv1 = bn_relu_conv_layer(input_layer, [3, 3, input_channel, output_channel], stride)
+            conv1 = bn_relu_conv_layer(input_layer, [3, 3, input_channel, output_channel], stride, weight_decay = weight_decay)
 
     with tf.variable_scope('conv2_in_block'):
-        conv2 = bn_relu_conv_layer(conv1, [3, 3, output_channel, output_channel], 1)
+        conv2 = bn_relu_conv_layer(conv1, [3, 3, output_channel, output_channel], 1, weight_decay = weight_decay)
 
     # When the channels of input layer and conv2 does not match, we add zero pads to increase the
     #  depth of input layers
@@ -235,7 +249,7 @@ def residual_block(input_layer, output_channel, first_block=False):
     return output
 
 
-def inference(input_tensor_batch, n, reuse):
+def inference(input_tensor_batch, n, reuse, weight_decay):
     '''
     The main function that defines the ResNet. total layers = 1 + 2n + 2n + 2n +1 = 6n + 2
     :param input_tensor_batch: 4D tensor
@@ -247,28 +261,28 @@ def inference(input_tensor_batch, n, reuse):
 
     layers = []
     with tf.variable_scope('conv0', reuse=reuse):
-        conv0 = conv_bn_relu_layer(input_tensor_batch, [3, 3, 3, 16], 1)
+        conv0 = conv_bn_relu_layer(input_tensor_batch, [3, 3, 3, 16], 1, weight_decay)
         activation_summary(conv0)
         layers.append(conv0)
 
     for i in range(n):
         with tf.variable_scope('conv1_%d' %i, reuse=reuse):
             if i == 0:
-                conv1 = residual_block(layers[-1], 16, first_block=True)
+                conv1 = residual_block(layers[-1], 16, weight_decay = weight_decay, first_block=True)
             else:
-                conv1 = residual_block(layers[-1], 16)
+                conv1 = residual_block(layers[-1], 16, weight_decay = weight_decay)
             activation_summary(conv1)
             layers.append(conv1)
 
     for i in range(n):
         with tf.variable_scope('conv2_%d' %i, reuse=reuse):
-            conv2 = residual_block(layers[-1], 32)
+            conv2 = residual_block(layers[-1], 32, weight_decay = weight_decay)
             activation_summary(conv2)
             layers.append(conv2)
 
     for i in range(n):
         with tf.variable_scope('conv3_%d' %i, reuse=reuse):
-            conv3 = residual_block(layers[-1], 64)
+            conv3 = residual_block(layers[-1], 64, weight_decay = weight_decay)
             layers.append(conv3)
         assert conv3.get_shape().as_list()[1:] == [8, 8, 64]
 
@@ -279,7 +293,7 @@ def inference(input_tensor_batch, n, reuse):
         global_pool = tf.reduce_mean(relu_layer, [1, 2])
 
         assert global_pool.get_shape().as_list()[-1:] == [64]
-        output = output_layer(global_pool, 10)
+        output = output_layer(global_pool, 10, weight_decay = weight_decay)
         layers.append(output)
 
     return global_pool, layers[-1]
@@ -296,3 +310,4 @@ def test_graph(train_dir='logs'):
     sess = tf.Session()
     sess.run(init)
     summary_writer = tf.train.SummaryWriter(train_dir, sess.graph)
+
