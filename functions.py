@@ -213,11 +213,11 @@ def pl_loss(features, labels, centers, flags):
 ##################################################
 # return the training operation to train the network
 def training(loss, learning_rate):
-    # optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
+    optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
     # optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     # optimizer = tf.train.RMSPropOptimizer(learning_rate)
     # RMSPropOptimizer
-    optimizer = tf.train.AdamOptimizer(learning_rate)
+    # optimizer = tf.train.AdamOptimizer(learning_rate)
     train_op = optimizer.minimize(loss)
     return train_op
     

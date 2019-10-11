@@ -178,7 +178,7 @@ def run_training():
     sess.run(init)
 
     # run the computation graph (train and test process)
-    epoch = 1
+    # epoch = 1
     loss_before = np.inf
     score_before = 0.0
     stopping = 0
@@ -189,7 +189,10 @@ def run_training():
     saver = tf.train.Saver(max_to_keep=1)
 
     # train the framework with the training data
-    while stopping<FLAGS.stop:
+    # while stopping<FLAGS.stop:
+    acc_save = []
+
+    for epoch in range(FLAGS.num_epoches):
         time1 = time.time()
         loss_now = 0.0
         score_now = 0.0
@@ -274,9 +277,10 @@ def run_training():
                    acc --> {:.3f}%'.format(epoch, loss_now, score_now*100))        	
         #print sess.run(centers)
     
-        if loss_now > loss_before or score_now < score_before:
+        # if loss_now > loss_before or score_now < score_before:
+        if (epoch + 1) % FLAGS.decay_step == 0:
             stopping += 1
-            FLAGS.learning_rate *= FLAGS.decay
+            FLAGS.learning_rate *= 0.1
             print ("\033[1;31;40mdecay learning rate {}th time!\033[0m".format(stopping))
             
         loss_before = loss_now
@@ -284,18 +288,19 @@ def run_training():
 
 
 
-        epoch += 1
+        # epoch += 1
         np.random.shuffle(list(index))
         time2 = time.time()
         print ('time for this epoch: {:.3f} minutes'.format((time2-time1)/60.0))
 
 
         # test the framework with the test data
-        if epoch % FLAGS.print_step == 0:
+        if (epoch + 1) % FLAGS.print_step == 0:
             # test_score, logits_test = do_eval(sess, eval_correct, images, labels, test_x, test_y, logits)
             # np.save('./cifar10_logits.npy', logits_test)
             test_score = do_eval(sess, eval_correct, images, labels, test_x, test_y)
             print ('epoch:{}, accuracy on the test dataset: {:.3f}%'.format(epoch, test_score*100))
+            acc_save.append(test_score)
 
         # saving the model.
         if not os.path.isdir(os.path.join(FLAGS.log_dir, FLAGS.dataset)):  
@@ -303,30 +308,32 @@ def run_training():
         checkpoint_file = os.path.join(str(os.path.join(FLAGS.log_dir, FLAGS.dataset)),\
          'model_'+FLAGS.loss+'_'+str(FLAGS.use_dot_product)+'_'+str(FLAGS.learning_rate)+'_'+str(FLAGS.batch_size)+'.ckpt')
         saver.save(sess, checkpoint_file, global_step=epoch)
-        #saving the centers.
 
-
+    acc_save = np.asarray(acc_save)
+    np.save('./acc_test_cifar10_40.npy', acc_save)
+    #saving the centers.
     sess.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='initial learning rate')
+    parser.add_argument('--learning_rate', type=float, default=0.1, help='initial learning rate')
     parser.add_argument('--batch_size', type=int, default=250, help='batch size for training')
     parser.add_argument('--dataset', type=str, default='mnist', help='which kind of data we use')
     parser.add_argument('--stop', type=int, default=np.inf, help='stopping number')
-    parser.add_argument('--decay', type=float, default=0.9, help='the value to decay the learning rate')
+    parser.add_argument('--decay_step', type=float, default=60, help='the steps to decay the learning rate')
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
     parser.add_argument('--weight_pl', type=float, default=0.001, help='the weight for the prototype loss (PL)')
     parser.add_argument('--gpu', type=int, default=1, help='the gpu id for use')
     parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
+    parser.add_argument('--num_epoches', type=int, default=300, help='the number of the epoches')
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=10, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
     parser.add_argument('--model', type=str, default='resnet', help='which model to use for training.')
     parser.add_argument('--num_residual_blocks', type=int, default=3, help='the number of residual blocks in the resnet.')#Resnet 6n+2
-    parser.add_argument('--use_dot_product', type=bool, default=True, help='what metric we use in cpl loss.')
+    parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
     parser.add_argument('--log_dir', type=str, default='./model', help='where to save the model.')
-    parser.add_argument('--weight_decay', type=float, default=0.00001, help='weight decay for resnet model.')
+    parser.add_argument('--weight_decay', type=float, default=0.0002, help='weight decay for resnet model.')
     parser.add_argument('--use_augmentation', type=bool, default = True, help = 'whether to use data augmentation during training.')
     # parser.add_argument('--use_bn', type=bool, default = True, help = 'whether to use bn.')
 
@@ -338,7 +345,7 @@ if __name__ == '__main__':
     print ('learning rate:', FLAGS.learning_rate)
     print ('batch size:', FLAGS.batch_size)
     print ('stopping:', FLAGS.stop)
-    print ('learning rate decay:', FLAGS.decay)
+    print ('learning rate decay step:', FLAGS.decay_step)
     print ('value of the temperature:', FLAGS.temp)
     print ('prototype loss weight:', FLAGS.weight_pl)
     print ('number of classes:', FLAGS.num_classes)
@@ -352,6 +359,7 @@ if __name__ == '__main__':
     print ('if use dot product:', FLAGS.use_dot_product)
     print ('weight decay rate is: ', FLAGS.weight_decay)
     print ('use data augmentation: ', FLAGS.use_augmentation)
+    print ('number of epoches:', FLAGS.num_epoches)
 
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)

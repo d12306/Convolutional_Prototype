@@ -113,8 +113,13 @@ def activation_summary(x):
 
 
 def create_variables(name, shape, weight_decay,initializer=tf.contrib.layers.variance_scaling_initializer(), is_fc_layer=False):
-    
+    # tf.contrib.layers.variance_scaling_initializer()
     # tf.contrib.layers.xavier_initializer()
+    # tf.initializers.truncated_normal()
+    # tf.random_normal_initializer()
+    # tf.glorot_normal_initializer()
+    # tf.uniform_unit_scaling_initializer(factor=1.0)
+
     '''
     :param name: A string. The name of the new variable
     :param shape: A list of dimensions
@@ -126,7 +131,6 @@ def create_variables(name, shape, weight_decay,initializer=tf.contrib.layers.var
     
     ## TODO: to allow different weight decay to fully connected layer and conv layer
     regularizer = tf.contrib.layers.l2_regularizer(scale=weight_decay)
-
     new_variables = tf.get_variable(name, shape=shape, initializer=initializer,
                                     regularizer=regularizer)
     return new_variables
@@ -140,7 +144,7 @@ def output_layer(input_layer, num_labels, weight_decay):
     '''
     input_dim = input_layer.get_shape().as_list()[-1]
     fc_w = create_variables(name='fc_weights', weight_decay = weight_decay, shape=[input_dim, num_labels], is_fc_layer=True,
-                            #initializer=tf.uniform_unit_scaling_initializer(factor=1.0))
+                            # initializer=tf.uniform_unit_scaling_initializer(factor=1.0))
                             initializer=tf.contrib.layers.variance_scaling_initializer())
     fc_b = create_variables(name='fc_bias', weight_decay = weight_decay, shape=[num_labels], initializer=tf.zeros_initializer())
 
