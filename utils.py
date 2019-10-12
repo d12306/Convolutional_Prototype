@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import pickle
 
+
 class data_augmentor(object):
     """docstring for data_augmentor"""
     def __init__(self, x):
@@ -14,6 +15,7 @@ class data_augmentor(object):
         # self.x = tf.image.random_saturation(self.x, 0.6, 1.6)
         # self.x = tf.image.random_brightness(self.x, 0.05)
         # self.x = tf.image.random_contrast(self.x, 0.7, 1.3) 
+        # self.x = tf.image.per_image_standardization(self.x)
         padded = tf.map_fn(lambda img: tf.image.resize_image_with_crop_or_pad(
             img, 32 + 4, 32 + 4),
             self.x)
@@ -22,23 +24,17 @@ class data_augmentor(object):
                                                              3]), padded)
         flipped = tf.map_fn(lambda img: tf.image.random_flip_left_right(img), cropped)
         # flipped = tf.map_fn(lambda img: tf.image.random_flip_up_down(img), flipped)
-
         self.augmented = flipped
         # self.augmented = tf.image.rot90(self.augmented)
 
-
     def output(self, sess, x_train):
-
         return sess.run(self.augmented, feed_dict={self.x: x_train})
 
 
 def load_cifar_datafile(filename):
   import pickle
   with open(filename, 'rb') as fo:
-      # if version.major == 3:
       data_dict = pickle.load(fo, encoding='bytes')
-      # else:
-      #     data_dict = pickle.load(fo)
       assert data_dict[b'data'].dtype == np.uint8
       image_data = data_dict[b'data']
       image_data = image_data.reshape(
@@ -65,7 +61,6 @@ def load_cifar():
     Xtest_5, Ytest_5 = load_cifar_datafile(filename_5)
 
     Xtest_test, Ytest_test = load_cifar_datafile(filename_test)
-
     Xtrain_all = Xtest_1/255.
     Xtrain_all = np.concatenate((Xtrain_all, Xtest_2/255.),axis = 0)
     Xtrain_all = np.concatenate((Xtrain_all, Xtest_3/255.),axis = 0)
@@ -100,7 +95,8 @@ def top_k_error(self, predictions, labels, k):
 '''
 This is the resnet structure
 '''
-BN_EPSILON = 0.001
+BN_EPSILON = 1e-5
+#A small float number to avoid dividing by 0.
 
 def activation_summary(x):
     '''
@@ -111,15 +107,15 @@ def activation_summary(x):
     tf.summary.histogram(tensor_name + '/activations', x)
     tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
-
-def create_variables(name, shape, weight_decay,initializer=tf.contrib.layers.variance_scaling_initializer(), is_fc_layer=False):
+def create_variables(name, shape, weight_decay,initializer=tf.contrib.layers.xavier_initializer(), is_fc_layer=False):
     # tf.contrib.layers.variance_scaling_initializer()
     # tf.contrib.layers.xavier_initializer()
     # tf.initializers.truncated_normal()
     # tf.random_normal_initializer()
     # tf.glorot_normal_initializer()
+    # tf.glorot_uniform_initializer()
+    # tf.keras.initializers.he_normal()
     # tf.uniform_unit_scaling_initializer(factor=1.0)
-
     '''
     :param name: A string. The name of the new variable
     :param shape: A list of dimensions
@@ -128,7 +124,6 @@ def create_variables(name, shape, weight_decay,initializer=tf.contrib.layers.var
     layers.
     :return: The created variable
     '''
-    
     ## TODO: to allow different weight decay to fully connected layer and conv layer
     regularizer = tf.contrib.layers.l2_regularizer(scale=weight_decay)
     new_variables = tf.get_variable(name, shape=shape, initializer=initializer,
@@ -144,8 +139,9 @@ def output_layer(input_layer, num_labels, weight_decay):
     '''
     input_dim = input_layer.get_shape().as_list()[-1]
     fc_w = create_variables(name='fc_weights', weight_decay = weight_decay, shape=[input_dim, num_labels], is_fc_layer=True,
-                            # initializer=tf.uniform_unit_scaling_initializer(factor=1.0))
-                            initializer=tf.contrib.layers.variance_scaling_initializer())
+                            initializer=tf.contrib.layers.xavier_initializer())
+                            # initializer=tf.contrib.layers.variance_scaling_initializer())
+                            # initializer = tf.keras.initializers.he_normal())
     fc_b = create_variables(name='fc_bias', weight_decay = weight_decay, shape=[num_labels], initializer=tf.zeros_initializer())
 
     fc_h = tf.matmul(input_layer, fc_w) + fc_b
@@ -168,7 +164,6 @@ def batch_normalization_layer(input_layer, dimension):
 
     return bn_layer
 
-
 def conv_bn_relu_layer(input_layer, filter_shape, stride, weight_decay):
     '''
     A helper function to conv, batch normalize and relu the input tensor sequentially
@@ -177,10 +172,8 @@ def conv_bn_relu_layer(input_layer, filter_shape, stride, weight_decay):
     :param stride: stride size for conv
     :return: 4D tensor. Y = Relu(batch_normalize(conv(X)))
     '''
-
     out_channel = filter_shape[-1]
     filter = create_variables(name='conv', weight_decay = weight_decay, shape=filter_shape)
-
     conv_layer = tf.nn.conv2d(input_layer, filter, strides=[1, stride, stride, 1], padding='SAME')
     bn_layer = batch_normalization_layer(conv_layer, out_channel)
 
@@ -196,7 +189,6 @@ def bn_relu_conv_layer(input_layer, filter_shape, stride, weight_decay):
     :param stride: stride size for conv
     :return: 4D tensor. Y = conv(Relu(batch_normalize(X)))
     '''
-
     in_channel = input_layer.get_shape().as_list()[-1]
 
     bn_layer = batch_normalization_layer(input_layer, in_channel)

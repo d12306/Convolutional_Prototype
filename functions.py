@@ -32,7 +32,8 @@ def visualize(feat, labels, epoch, centers, args):
 def distance(features, centers, flags):
 
     features = tf.tile(tf.expand_dims(tf.expand_dims(features, axis = 1),axis = 1), multiples= [1,flags.num_classes,flags.num_protos,1])
-    centers = tf.tile(tf.expand_dims(centers, axis = 0), multiples = [flags.batch_size,1,1,1])
+    size = tf.shape(features)[0]
+    centers = tf.tile(tf.expand_dims(centers, axis = 0), multiples = [size,1,1,1])
     dist = tf.norm(features - centers, axis = 3)
     # import ipdb
     # ipdb.set_trace()
@@ -43,7 +44,8 @@ def distance(features, centers, flags):
 
 def dot_product(features, centers, flags):
     features = tf.tile(tf.expand_dims(tf.expand_dims(features, axis = 1),axis = 1), multiples= [1,flags.num_classes,flags.num_protos,1])
-    centers = tf.tile(tf.expand_dims(centers, axis = 0), multiples = [flags.batch_size,1,1,1])
+    size = tf.shape(features)[0]
+    centers = tf.tile(tf.expand_dims(centers, axis = 0), multiples = [size,1,1,1])
     product = tf.multiply(features, centers)
     product = tf.reduce_sum(product, axis = 3)
 
@@ -204,20 +206,17 @@ def pl_loss(features, labels, centers, flags):
     features = tf.tile(tf.expand_dims(features, axis = 1), multiples = [1,flags.num_protos, 1])
 
 
-    # import ipdb
-    # ipdb.set_trace()
-
     dis = features - batch_centers
     return tf.div(tf.nn.l2_loss(dis), batch_num)
     
 ##################################################
 # return the training operation to train the network
 def training(loss, learning_rate):
-    optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
+    # optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
     # optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     # optimizer = tf.train.RMSPropOptimizer(learning_rate)
     # RMSPropOptimizer
-    # optimizer = tf.train.AdamOptimizer(learning_rate)
+    optimizer = tf.train.AdamOptimizer(learning_rate)
     train_op = optimizer.minimize(loss)
     return train_op
     
@@ -252,8 +251,8 @@ def evaluation(features, labels, centers, flags):
     # logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
     # logits = tf.reshape(logits, (-1,flags.num_classes))
     # prediction = tf.argmin(logits, axis=1, name='prediction')
-
-    dist = tf.reshape(dist, [flags.batch_size, -1])
+    size = tf.shape(features)[0]
+    dist = tf.reshape(dist, [size, -1])
     prediction = tf.argmin(dist, axis = 1) // flags.num_protos
     correct = tf.equal(tf.cast(prediction, tf.int32), labels, name='correct')
 
@@ -278,7 +277,8 @@ def evaluation_dot_product(features, labels, centers, flags):
     #      tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
     # logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
     # logits = tf.reshape(logits, (-1,flags.num_classes))
-    dist = tf.reshape(dist, [flags.batch_size, -1])
+    size = tf.shape(features)[0]
+    dist = tf.reshape(dist, [size, -1])
     prediction = tf.argmax(dist, axis = 1) // flags.num_protos
     correct = tf.equal(tf.cast(prediction, tf.int32), labels, name='correct')
 
