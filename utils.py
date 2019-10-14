@@ -143,7 +143,6 @@ def output_layer(input_layer, num_labels, weight_decay):
                             # initializer=tf.contrib.layers.variance_scaling_initializer())
                             # initializer = tf.keras.initializers.he_normal())
     fc_b = create_variables(name='fc_bias', weight_decay = weight_decay, shape=[num_labels], initializer=tf.zeros_initializer())
-
     fc_h = tf.matmul(input_layer, fc_w) + fc_b
     return fc_h
 
@@ -161,7 +160,6 @@ def batch_normalization_layer(input_layer, dimension):
     gamma = tf.get_variable('gamma', dimension, tf.float32,
                                 initializer=tf.constant_initializer(1.0, tf.float32))
     bn_layer = tf.nn.batch_normalization(input_layer, mean, variance, beta, gamma, BN_EPSILON)
-
     return bn_layer
 
 def conv_bn_relu_layer(input_layer, filter_shape, stride, weight_decay):

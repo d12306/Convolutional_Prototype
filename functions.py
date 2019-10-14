@@ -150,7 +150,7 @@ def dce_loss(features, labels, centers, T, flags):
     # ipdb.set_trace()
 
     condition_indices= tf.dynamic_partition(
-        tf.range(flags.num_classes * dist.shape[0]),\
+        tf.range(flags.num_classes * tf.shape(dist)[0]),\
          tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
     logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
     logits = tf.reshape(logits, (-1,flags.num_classes))
@@ -211,12 +211,26 @@ def pl_loss(features, labels, centers, flags):
     
 ##################################################
 # return the training operation to train the network
-def training(loss, learning_rate):
-    # optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
+def training(loss, args, learning_rate):
+    print('Using optimizer: {}'.format(args.optimizer))
+    if args.optimizer == 'ADAGRAD':
+        opt = tf.train.AdagradOptimizer(learning_rate)
+    elif args.optimizer == 'SGD':
+        opt = tf.train.GradientDescentOptimizer(learning_rate)
+    elif args.optimizer == 'MOM':
+        opt = tf.train.MomentumOptimizer(learning_rate,0.9)
+    elif args.optimizer == 'ADAM':
+        opt = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.999, epsilon=0.1)
+    elif args.optimizer == 'RMSP':
+        opt = tf.train.RMSPropOptimizer(learning_rate)
+    else:
+        raise Exception("Not supported optimizer: {}".format(args.optimizer))
+
+    optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
     # optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     # optimizer = tf.train.RMSPropOptimizer(learning_rate)
     # RMSPropOptimizer
-    optimizer = tf.train.AdamOptimizer(learning_rate)
+    # optimizer = tf.train.AdamOptimizer(learning_rate)
     train_op = optimizer.minimize(loss)
     return train_op
     

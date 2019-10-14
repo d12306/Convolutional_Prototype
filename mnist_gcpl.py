@@ -78,8 +78,6 @@ def run_training():
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
 
-        
-
     elif FLAGS.dataset == 'cifar10':
         from keras.datasets import cifar10
         (xtrain, ytrain), (xtest, ytest) = cifar10.load_data()
@@ -91,7 +89,7 @@ def run_training():
         xtest = xtest / 255.0
 
         # xtrain, ytrain, xtest, ytest = load_cifar()
-        train_x, train_y = xtrain.reshape(-1,32,32, 3), ytrain
+        train_x, train_y = xtrain.reshape(-1,32,32,3), ytrain
         test_x, test_y = xtest.reshape(-1,32,32,3), ytest
         # data normalization.
         # test_x = test_x - np.mean(test_x, axis = 0)
@@ -172,21 +170,23 @@ def run_training():
         loss2 = func.pl_loss(features, labels, centers, FLAGS)
         loss = loss1 + FLAGS.weight_pl * loss2
         
-        train_op = func.training(loss, lr)
-
         if FLAGS.model == 'resnet':
-            reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            loss = loss + reg_losses
+            # reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+            reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss = tf.add_n([loss] + reg_losses)#loss + reg_losses
+
+        train_op = func.training(loss, FLAGS, lr)
 
     elif FLAGS.loss == "softmax":
         loss = func.softmax_loss(logits, labels)
         eval_correct = func.evaluation_softmax(logits, labels)
-        train_op = func.training(loss, lr)
-
         if FLAGS.model == 'resnet':
-            reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            loss = loss + reg_losses
+            # reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+            # loss = loss + reg_losses
+            reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss = tf.add_n([loss] + reg_losses)#loss + reg_losses
 
+        train_op = func.training(loss, FLAGS, lr)
 
     init = tf.global_variables_initializer()
     # initialize the variables
@@ -219,8 +219,9 @@ def run_training():
 
             # if loss_now > loss_before or score_now < score_before:
             # if (epoch + 1) % FLAGS.decay_step == 0:
-            if epoch < 5:
-                learning_rate_temp = FLAGS.learning_rate * float(steps) / float(batch_num * 5)
+            if epoch < 10:
+                # learning_rate_temp = FLAGS.learning_rate * float(steps) / float(batch_num * 10)
+                learning_rate_temp = FLAGS.learning_rate 
 
             batch_x = train_x[index[i*batch_size:(i+1)*batch_size]]
             batch_y = train_y[index[i*batch_size:(i+1)*batch_size]]
@@ -230,15 +231,13 @@ def run_training():
                 if FLAGS.model == 'resnet':
                     if FLAGS.use_augmentation:
                         batch_x = augment.output(sess, batch_x)
-
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, reg_losses, centers, features],\
-                    feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
-                    reg_loss += result[5]
+                    feed_dict={images:batch_x, labels:batch_y, lr:learning_rate_temp})
+                    reg_loss += np.sum(result[5])
 
                 else:
                     if FLAGS.use_augmentation:
                         batch_x = augment.output(sess, batch_x)
-
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, centers, features],\
                     feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
 
@@ -246,6 +245,7 @@ def run_training():
                 score_now += result[4]
                 loss_dce += result[2]
                 loss_pl += result[3]
+
                 if i == 0:
                     features_container = np.asarray(result[-1])
                     label_container = batch_y
@@ -255,14 +255,14 @@ def run_training():
 
 
             elif FLAGS.loss == 'softmax':
-            
                 if FLAGS.model == 'resnet':
                     if FLAGS.use_augmentation:
                         batch_x = augment.output(sess, batch_x)
 
                     result = sess.run([train_op, loss, eval_correct, reg_losses],\
                     feed_dict={images:batch_x, labels:batch_y, lr:learning_rate_temp})
-                    reg_loss += result[3]
+
+                    reg_loss += np.sum(result[3])
                 else:
                     if FLAGS.use_augmentation:
                         batch_x = augment.output(sess, batch_x)
@@ -280,25 +280,25 @@ def run_training():
         #         centers_container = result[-2]
         #         func.visualize(features_container, label_container, epoch, centers_container, FLAGS)
 
-        if epoch +1 == 100 or epoch +1 == 150 or epoch +1 == 200:
+        # if epoch +1 == 90 or epoch +1 == 150 or epoch +1 == 200:
+        if (epoch + 1) % FLAGS.decay_step == 0:
             stopping += 1
-            learning_rate_temp *= 0.1
+            learning_rate_temp *= 0.5
             print ("\033[1;31;40mdecay learning rate {}th time!\033[0m".format(stopping))
 
 
         score_now /= train_num
         loss_now /= batch_num
 
-
         if FLAGS.loss == 'cpl':
-        	loss_dce = loss_dce / batch_num
-        	loss_pl = loss_pl / batch_num
+            loss_dce = loss_dce / batch_num
+            loss_pl = loss_pl / batch_num
             if FLAGS.model == 'resnet':
                 reg_loss /= batch_num
                 print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f}, reg_loss --> {:.3f},\
                  acc --> {:.3f}%'.format(epoch, loss_now, loss_dce, loss_pl, reg_loss, score_now*100))
             else:
-               print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f},\
+                print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f},\
                  acc --> {:.3f}%'.format(epoch, loss_now, loss_dce, loss_pl, score_now*100))
         elif FLAGS.loss == 'softmax':
             if FLAGS.model == 'resnet':
@@ -308,7 +308,7 @@ def run_training():
             else:
                 print ('epoch {}: training: loss --> {:.3f},\
                    acc --> {:.3f}%'.format(epoch, loss_now, score_now*100))        	
-        #print sess.run(centers)
+
 
         # epoch += 1
         np.random.shuffle(list(index))
@@ -333,31 +333,37 @@ def run_training():
          'model_'+FLAGS.loss+'_'+str(FLAGS.use_dot_product)+'_'+str(FLAGS.learning_rate)+'_'+str(FLAGS.batch_size)+'.ckpt')
         saver.save(sess, checkpoint_file, global_step=epoch)
 
+
+
     acc_save = np.asarray(acc_save)
     np.save('./acc_test_cifar10_original_paper.npy', acc_save)
-    #saving the centers.
     sess.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--learning_rate', type=float, default=0.1, help='initial learning rate')
-    parser.add_argument('--batch_size', type=int, default=128, help='batch size for training')
+    parser.add_argument('--batch_size', type=int, default=256, help='batch size for training')
+    parser.add_argument('--weight_pl', type=float, default=0.0001, help='the weight for the prototype loss (PL)')
+    parser.add_argument('--num_epoches', type=int, default=300, help='the number of the epoches')
+    parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
+    parser.add_argument('--weight_decay', type=float, default=0.0002, help='weight decay for resnet model.')
+    parser.add_argument('--optimizer', type=str, default='ADAM', help='optimizer for the model.',\
+    	choices=['ADAGRAD', 'ADAM',  'MOM','SGD', 'RMSP'])
+
+
+
     parser.add_argument('--dataset', type=str, default='mnist', help='which kind of data we use')
     parser.add_argument('--stop', type=int, default=np.inf, help='stopping number')
     parser.add_argument('--decay_step', type=float, default=60, help='the steps to decay the learning rate')
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
-    parser.add_argument('--weight_pl', type=float, default=0.001, help='the weight for the prototype loss (PL)')
-    parser.add_argument('--gpu', type=int, default=1, help='the gpu id for use')
+    parser.add_argument('--gpu', type=int, default=1, help='the gpu id for use')    
     parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
-    parser.add_argument('--num_epoches', type=int, default=300, help='the number of the epoches')
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=1, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
     parser.add_argument('--model', type=str, default='resnet', help='which model to use for training.')
     parser.add_argument('--num_residual_blocks', type=int, default=3, help='the number of residual blocks in the resnet.')#Resnet 6n+2
-    parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
     parser.add_argument('--log_dir', type=str, default='./model', help='where to save the model.')
-    parser.add_argument('--weight_decay', type=float, default=0.0001, help='weight decay for resnet model.')
     parser.add_argument('--use_augmentation', type=bool, default = True, help = 'whether to use data augmentation during training.')
     parser.add_argument('--restore', type=str, default = '', help = 'whether to restore model.')
     # parser.add_argument('--use_bn', type=bool, default = True, help = 'whether to use bn.')
