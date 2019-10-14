@@ -3,7 +3,9 @@
 main training entry: mnist_gcpl.py. We can change the model architecture, dataset, loss type and so on.   
 Note that if we use the dot product as the comparison metric, the prototype loss should be set to 0. Otherwise, the model can not converge.
 
-model structure: nets.py. Network for MNIST is the same as this [CVPR2018 paper](https://github.com/YangHM/Convolutional-Prototype-Learning), Network for Cifar10 is ResNet-20 (300 epoches) with data augmentation, Momentum optimizer, initial lr 0.1, decay step 60 (by 0.5).
+model structure: nets.py. Network for MNIST is the same as this [CVPR2018 paper](https://github.com/YangHM/Convolutional-Prototype-Learning), Momentum optimizer, initial lr 0.1, decay step 60 (by 0.5) to train the distance based multi prototype loss. Adam 3e-4 to train the softmax loss. 
+
+Network for Cifar10 is ResNet-20 (300 epoches) with data augmentation, Momentum optimizer, initial lr 0.1, decay step 60 (by 0.5) to train the softmax loss and the distance based multi prototype loss (also with weight decay 0.0002).
 
 ## Experiment Results
 
