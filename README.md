@@ -11,8 +11,13 @@ model structure: nets.py
 | -------------------------------------- | ------------- | -------- | 
 | MNIST     | Softmax      |   | 
 | MNIST     | Multi-Proto    |   | 
+|MNIST| Multi-Proto (1)   |   |
+|MNIST| Multi-Proto (5)   |   |
+|MNIST| Multi-Proto (10)   |   |
 | Cifar10    | Softmax      | 90.86%  |
 |Cifar10| Multi-Proto (5)   | 90.96%  |
+|Cifar10| Multi-Proto (1)   |   |
+|Cifar10| Multi-Proto (10)   |   |
 | Cifar100     | Softmax        |   | 
 |Cifar100 | Multi-Proto    |   |
 |ImageNet   | Softmax       |    | 
