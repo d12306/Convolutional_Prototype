@@ -9,7 +9,7 @@ model structure: nets.py. Network for MNIST is the same as this [CVPR2018 paper]
 
 | Dataset                              | Method  | Accuracy |
 | -------------------------------------- | ------------- | -------- | 
-| MNIST     | Softmax      |   | 
+| MNIST     | Softmax      |  98.65% | 
 |MNIST| Multi-Proto (1)distance    |   |
 |MNIST| Multi-Proto (5)distance    |   |
 |MNIST| Multi-Proto (10)distance    |   |
