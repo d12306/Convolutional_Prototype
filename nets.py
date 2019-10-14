@@ -26,10 +26,10 @@ def mnist_net(images):
 
     pool3 = Max_pool(conv6, padding='VALID')
 
-    fc1 = FC(tf.reshape(pool3, [-1, 3*3*128]), 3*3*128, 2)
+    fc1 = FC(tf.reshape(pool3, [-1, 3*3*128]), 3*3*128, 100)
     fc1_out = ReLU(fc1)
 
-    logits = FC(fc1_out, 2, 10)
+    logits = FC(fc1_out, 100, 10)
 
     return fc1, logits
 
@@ -63,8 +63,6 @@ def cifar_net1(images, keep_rates):
     # flatten = FC(flatten, 10, 2)
     # flatten_out = ReLU(flatten)
     # logits = FC(flatten_out, 2, 10, regular=True)
-
-    
     flatten = tf.reshape(pool3, [-1, 10])
     logits = FC(flatten, 10, 10, regular=True)
 

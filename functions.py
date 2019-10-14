@@ -214,19 +214,19 @@ def pl_loss(features, labels, centers, flags):
 def training(loss, args, learning_rate):
     print('Using optimizer: {}'.format(args.optimizer))
     if args.optimizer == 'ADAGRAD':
-        opt = tf.train.AdagradOptimizer(learning_rate)
+        optimizer = tf.train.AdagradOptimizer(learning_rate)
     elif args.optimizer == 'SGD':
-        opt = tf.train.GradientDescentOptimizer(learning_rate)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     elif args.optimizer == 'MOM':
-        opt = tf.train.MomentumOptimizer(learning_rate,0.9)
+        optimizer = tf.train.MomentumOptimizer(learning_rate,0.9)
     elif args.optimizer == 'ADAM':
-        opt = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.999, epsilon=0.1)
+        optimizer = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.999, epsilon=0.1)
     elif args.optimizer == 'RMSP':
-        opt = tf.train.RMSPropOptimizer(learning_rate)
+        optimizer = tf.train.RMSPropOptimizer(learning_rate)
     else:
         raise Exception("Not supported optimizer: {}".format(args.optimizer))
 
-    optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
+    # optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
     # optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     # optimizer = tf.train.RMSPropOptimizer(learning_rate)
     # RMSPropOptimizer

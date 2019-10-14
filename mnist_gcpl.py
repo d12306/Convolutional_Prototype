@@ -65,6 +65,11 @@ def run_training():
     if FLAGS.dataset == 'mnist':
         train_x, train_y = mnist.train.images.reshape(-1,1,28,28), mnist.train.labels
         test_x, test_y = mnist.test.images.reshape(-1,1,28,28), mnist.test.labels
+        # data normalization.
+        # test_x = test_x - np.mean(test_x, axis = 0)
+        # test_x = test_x / (np.std(test_x, axis = 0) + 1e-8)
+        # train_x = train_x - np.mean(train_x, axis = 0)
+        # train_x= train_x / (np.std(train_x, axis = 0) + 1e-8)
         train_num = train_x.shape[0]
         test_num = test_x.shape[0]
         # construct the computation graph
@@ -77,6 +82,7 @@ def run_training():
 
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
+        # print('test!')
 
     elif FLAGS.dataset == 'cifar10':
         from keras.datasets import cifar10
@@ -140,6 +146,7 @@ def run_training():
 
 	    # construct the computation graph
         images = tf.placeholder(tf.float32, shape=[None,32,32,3])
+        images_new = tf.placeholder(tf.float32, shape=[None,32,32,3])
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
 
@@ -167,8 +174,8 @@ def run_training():
             loss1 = func.dce_loss(features, labels, centers, FLAGS.temp, FLAGS)
             eval_correct = func.evaluation(features, labels, centers, FLAGS)
 
-        loss2 = func.pl_loss(features, labels, centers, FLAGS)
-        loss = loss1 + FLAGS.weight_pl * loss2
+        loss2 = FLAGS.weight_pl * func.pl_loss(features, labels, centers, FLAGS)
+        loss = loss1 + loss2
         
         if FLAGS.model == 'resnet':
             # reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
@@ -239,7 +246,7 @@ def run_training():
                     if FLAGS.use_augmentation:
                         batch_x = augment.output(sess, batch_x)
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, centers, features],\
-                    feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+                    feed_dict={images:batch_x, labels:batch_y, lr:learning_rate_temp})
 
                 loss_now += result[1]
                 score_now += result[4]
@@ -268,7 +275,7 @@ def run_training():
                         batch_x = augment.output(sess, batch_x)
 
                     result = sess.run([train_op, loss, eval_correct],\
-                    feed_dict={images:batch_x, labels:batch_y, lr:FLAGS.learning_rate})
+                    feed_dict={images:batch_x, labels:batch_y, lr:learning_rate_temp})
 
                 loss_now += result[1]
                 score_now += result[2]
@@ -283,7 +290,7 @@ def run_training():
         # if epoch +1 == 90 or epoch +1 == 150 or epoch +1 == 200:
         if (epoch + 1) % FLAGS.decay_step == 0:
             stopping += 1
-            learning_rate_temp *= 0.5
+            learning_rate_temp *= FLAGS.decay_rate
             print ("\033[1;31;40mdecay learning rate {}th time!\033[0m".format(stopping))
 
 
@@ -347,24 +354,24 @@ if __name__ == '__main__':
     parser.add_argument('--num_epoches', type=int, default=300, help='the number of the epoches')
     parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
     parser.add_argument('--weight_decay', type=float, default=0.0002, help='weight decay for resnet model.')
-    parser.add_argument('--optimizer', type=str, default='ADAM', help='optimizer for the model.',\
+    parser.add_argument('--optimizer', type=str, default='MOM', help='optimizer for the model.',\
     	choices=['ADAGRAD', 'ADAM',  'MOM','SGD', 'RMSP'])
-
+    parser.add_argument('--model', type=str, default='', help='which model to use for training.')
+    parser.add_argument('--use_augmentation', type=bool, default = False, help = 'whether to use data augmentation during training.')
+    parser.add_argument('--decay_rate', type=float, default=0.5, help='decay rate.')
+    parser.add_argument('--decay_step', type=float, default=60, help='the steps to decay the learning rate')
 
 
     parser.add_argument('--dataset', type=str, default='mnist', help='which kind of data we use')
     parser.add_argument('--stop', type=int, default=np.inf, help='stopping number')
-    parser.add_argument('--decay_step', type=float, default=60, help='the steps to decay the learning rate')
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
     parser.add_argument('--gpu', type=int, default=1, help='the gpu id for use')    
     parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=1, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
-    parser.add_argument('--model', type=str, default='resnet', help='which model to use for training.')
     parser.add_argument('--num_residual_blocks', type=int, default=3, help='the number of residual blocks in the resnet.')#Resnet 6n+2
     parser.add_argument('--log_dir', type=str, default='./model', help='where to save the model.')
-    parser.add_argument('--use_augmentation', type=bool, default = True, help = 'whether to use data augmentation during training.')
     parser.add_argument('--restore', type=str, default = '', help = 'whether to restore model.')
     # parser.add_argument('--use_bn', type=bool, default = True, help = 'whether to use bn.')
 
@@ -392,6 +399,8 @@ if __name__ == '__main__':
     print ('use data augmentation: ', FLAGS.use_augmentation)
     print ('number of epoches:', FLAGS.num_epoches)
     print ('whether to restore model:', FLAGS.restore)
+    print ('which optimizer used in the model:', FLAGS.optimizer)
+
 
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
