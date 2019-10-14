@@ -348,16 +348,16 @@ def run_training():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--learning_rate', type=float, default=0.1, help='initial learning rate')
+    parser.add_argument('--learning_rate', type=float, default=3e-4, help='initial learning rate')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size for training')
     parser.add_argument('--weight_pl', type=float, default=0.0001, help='the weight for the prototype loss (PL)')
     parser.add_argument('--num_epoches', type=int, default=300, help='the number of the epoches')
     parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
     parser.add_argument('--weight_decay', type=float, default=0.0002, help='weight decay for resnet model.')
-    parser.add_argument('--optimizer', type=str, default='MOM', help='optimizer for the model.',\
+    parser.add_argument('--optimizer', type=str, default='ADAM', help='optimizer for the model.',\
     	choices=['ADAGRAD', 'ADAM',  'MOM','SGD', 'RMSP'])
     parser.add_argument('--model', type=str, default='', help='which model to use for training.')
-    parser.add_argument('--use_augmentation', type=bool, default = False, help = 'whether to use data augmentation during training.')
+    parser.add_argument('--use_augmentation', type=bool, default = True, help = 'whether to use data augmentation during training.')
     parser.add_argument('--decay_rate', type=float, default=0.5, help='decay rate.')
     parser.add_argument('--decay_step', type=float, default=60, help='the steps to decay the learning rate')
 
