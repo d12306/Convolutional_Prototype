@@ -5,4 +5,16 @@ Note that if we use the dot product as the comparison metric, the prototype loss
 
 model structure: nets.py
 
+## Experiment Results
+
+| Dataset                              | Method  | Accuracy |
+| -------------------------------------- | ------------- | -------- | 
+| MNIST     | Softmax      |   | 
+| MNIST     | Multi-Proto    |   | 
+| Cifar10    | Softmax      |   |
+|Cifar10| Multi-Proto    |   |
+| Cifar100     | Softmax        |   | 
+|Cifar100 | Multi-Proto    |   |
+|ImageNet   | Softmax       |    | 
+|ImageNet | Multi-Proto    |   |
 
