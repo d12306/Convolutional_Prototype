@@ -15,8 +15,8 @@ Network for Cifar10 is ResNet-20 (300 epoches) with data augmentation, Momentum 
 |MNIST| Multi-Proto (1)distance    |  99.58% |
 |MNIST| Multi-Proto (5)distance    |  99.61% |
 |MNIST| Multi-Proto (10)distance    |  99.65% |
-|MNIST| Multi-Proto (1)dot-product    |   |
-|MNIST| Multi-Proto (5)dot-product    |   |
+|MNIST| Multi-Proto (1)dot-product    |  99.36% |
+|MNIST| Multi-Proto (5)dot-product    |  99.22% |
 |MNIST| Multi-Proto (10)dot-product     |99.19%   |
 | Cifar10    | Softmax      | 90.86%  |
 |Cifar10| Multi-Proto (5)distance   | 90.96%  |
