@@ -10,7 +10,6 @@ model structure: nets.py. Network for MNIST is the same as this [CVPR2018 paper]
 | Dataset                              | Method  | Accuracy |
 | -------------------------------------- | ------------- | -------- | 
 | MNIST     | Softmax      |   | 
-| MNIST     | Multi-Proto    |   | 
 |MNIST| Multi-Proto (1)   |   |
 |MNIST| Multi-Proto (5)   |   |
 |MNIST| Multi-Proto (10)   |   |
@@ -19,7 +18,9 @@ model structure: nets.py. Network for MNIST is the same as this [CVPR2018 paper]
 |Cifar10| Multi-Proto (1)   |   |
 |Cifar10| Multi-Proto (10)   |   |
 | Cifar100     | Softmax        |   | 
-|Cifar100 | Multi-Proto    |   |
+|Cifar100| Multi-Proto (5)   |  |
+|Cifar100| Multi-Proto (1)   |   |
+|Cifar100| Multi-Proto (10)   |   |
 |ImageNet   | Softmax       |    | 
 |ImageNet | Multi-Proto    |   |
 
