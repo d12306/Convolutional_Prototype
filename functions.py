@@ -190,7 +190,7 @@ def dot_dce_loss(features, labels, centers, T, flags):
     dist_this_class_max = tf.reshape(dist_this_class_max, (-1,))
 
     condition_indices= tf.dynamic_partition(
-        tf.range(flags.num_classes * dist.shape[0]),\
+        tf.range(flags.num_classes * tf.shape(dist)[0]),\
          tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
     logits = tf.dynamic_stitch(condition_indices, [dist_not_this_class_min, dist_this_class_max])
     logits = tf.reshape(logits, (-1,flags.num_classes))

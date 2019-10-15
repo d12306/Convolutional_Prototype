@@ -7,6 +7,7 @@ import time
 import os
 from utils import *
 from tf_func import *
+from densenet import *
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # from resnet import *
 
@@ -141,6 +142,12 @@ def run_training():
         # xtrain, ytrain, xtest, ytest = load_cifar100()
         train_x, train_y = xtrain.reshape(-1,32,32, 3), ytrain
         test_x, test_y = xtest.reshape(-1,32,32,3), ytest
+        #another normalization method.
+        train_x = train_x - [0.4914, 0.4822, 0.4465]
+        train_x = train_x / [0.2023, 0.1994, 0.2010]
+        test_x = test_x - [0.4914, 0.4822, 0.4465]
+        test_x = test_x / [0.2023, 0.1994, 0.2010]    
+
         train_num = train_x.shape[0]
         test_num = test_x.shape[0]
 
@@ -150,10 +157,12 @@ def run_training():
         labels = tf.placeholder(tf.int32, shape=[None])
         lr= tf.placeholder(tf.float32)
 
-        if FLAGS.model == 'resnet':
+        if FLAGS.model == 'densenet':
             if FLAGS.use_augmentation:
                 augment = data_augmentor(images_new)
-            features, logits = inference(images, FLAGS.num_residual_blocks, reuse=False, weight_decay = FLAGS.weight_decay)
+            features, logits = densenet_bc(images, num_classes = FLAGS.num_classes,is_training = True, growth_rate = 12,drop_rate = 0,\
+            	depth = 100, for_imagenet = False, reuse = False, scope='test')
+            # inference(images, FLAGS.num_residual_blocks, reuse=False, weight_decay = FLAGS.weight_decay)
         else:
             if FLAGS.use_augmentation:
                 augment = data_augmentor(images_new)
@@ -287,8 +296,8 @@ def run_training():
         #         centers_container = result[-2]
         #         func.visualize(features_container, label_container, epoch, centers_container, FLAGS)
 
-        # if epoch +1 == 90 or epoch +1 == 150 or epoch +1 == 200:
-        if (epoch + 1) % FLAGS.decay_step == 0:
+        if epoch +1 == 150 or epoch +1 == 225:
+        # if (epoch + 1) % FLAGS.decay_step == 0:
             stopping += 1
             learning_rate_temp *= FLAGS.decay_rate
             print ("\033[1;31;40mdecay learning rate {}th time!\033[0m".format(stopping))
@@ -348,25 +357,24 @@ def run_training():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--learning_rate', type=float, default=3e-4, help='initial learning rate')
+    parser.add_argument('--learning_rate', type=float, default=0.1, help='initial learning rate')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size for training')
     parser.add_argument('--weight_pl', type=float, default=0.0001, help='the weight for the prototype loss (PL)')
     parser.add_argument('--num_epoches', type=int, default=300, help='the number of the epoches')
-    parser.add_argument('--use_dot_product', type=bool, default=False, help='what metric we use in cpl loss.')
+    parser.add_argument('--use_dot_product', type=bool, default=True, help='what metric we use in cpl loss.')
     parser.add_argument('--weight_decay', type=float, default=0.0002, help='weight decay for resnet model.')
-    parser.add_argument('--optimizer', type=str, default='ADAM', help='optimizer for the model.',\
+    parser.add_argument('--optimizer', type=str, default='MOM', help='optimizer for the model.',\
     	choices=['ADAGRAD', 'ADAM',  'MOM','SGD', 'RMSP'])
-    parser.add_argument('--model', type=str, default='', help='which model to use for training.')
+    parser.add_argument('--model', type=str, default='densenet', help='which model to use for training.')
     parser.add_argument('--use_augmentation', type=bool, default = True, help = 'whether to use data augmentation during training.')
-    parser.add_argument('--decay_rate', type=float, default=0.5, help='decay rate.')
+    parser.add_argument('--decay_rate', type=float, default=0.1, help='decay rate.')
     parser.add_argument('--decay_step', type=float, default=60, help='the steps to decay the learning rate')
-
+    parser.add_argument('--num_classes', type=int, default=100, help='the number of the classes')
 
     parser.add_argument('--dataset', type=str, default='mnist', help='which kind of data we use')
     parser.add_argument('--stop', type=int, default=np.inf, help='stopping number')
     parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
     parser.add_argument('--gpu', type=int, default=1, help='the gpu id for use')    
-    parser.add_argument('--num_classes', type=int, default=10, help='the number of the classes')
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=1, help='the number steps for printing.')
     parser.add_argument('--loss', type=str, default='cpl', help='which loss to choose.')
