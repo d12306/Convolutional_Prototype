@@ -7,6 +7,8 @@ model structure: nets.py. Network for MNIST is the same as this [CVPR2018 paper]
 
 Network for Cifar10 is ResNet-20 (300 epoches) with data augmentation, Momentum optimizer, initial lr 0.1, decay step 60 (by 0.5) to train the softmax loss and the distance based multi prototype loss (also with weight decay 0.0002).
 
+Network for Cifar100 is DenseNet-BC-k-12 (300 epoches) with data augmentation, Momentum optimizer, initial lr 0.1, decay step 150 and 225 (by 0.1) to train the softmax loss and the distance based multi prototype loss. 
+
 ## Experiment Results
 
 | Dataset                              | Method  | Accuracy |
@@ -26,9 +28,12 @@ Network for Cifar10 is ResNet-20 (300 epoches) with data augmentation, Momentum 
 |Cifar10| Multi-Proto (5)dot-product    |  91.13%|
 |Cifar10| Multi-Proto (10)dot-product   |91.05% |
 | Cifar100     | Softmax       |   | 
-|Cifar100| Multi-Proto (5)-distance    |  |
 |Cifar100| Multi-Proto (1)-distance    |   |
+|Cifar100| Multi-Proto (5)-distance    |  |
 |Cifar100| Multi-Proto (10)-distance    |   |
+|Cifar100| Multi-Proto (1)dot-product  | |
+|Cifar100| Multi-Proto (5)dot-product    |  |
+|Cifar100| Multi-Proto (10)dot-product   | |
 |ImageNet   | Softmax       |    | 
 |ImageNet | Multi-Proto    |   |
 
