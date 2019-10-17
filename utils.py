@@ -243,7 +243,7 @@ def residual_block(input_layer, output_channel, weight_decay, first_block=False)
     return output
 
 
-def inference(input_tensor_batch, n, reuse, weight_decay):
+def inference(input_tensor_batch, n, num_classes, reuse, weight_decay):
     '''
     The main function that defines the ResNet. total layers = 1 + 2n + 2n + 2n +1 = 6n + 2
     :param input_tensor_batch: 4D tensor
@@ -287,7 +287,7 @@ def inference(input_tensor_batch, n, reuse, weight_decay):
         global_pool = tf.reduce_mean(relu_layer, [1, 2])
 
         assert global_pool.get_shape().as_list()[-1:] == [64]
-        output = output_layer(global_pool, 10, weight_decay = weight_decay)
+        output = output_layer(global_pool, num_classes, weight_decay = weight_decay)
         layers.append(output)
 
     return global_pool, layers[-1]

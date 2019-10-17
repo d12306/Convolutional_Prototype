@@ -17,13 +17,14 @@ def visualize(feat, labels, epoch, centers, args):
     plt.legend(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], loc='upper right')
 
     for i in range(10):
-        plt.plot(centers[i,:,0], centers[i,:,1], 'D', c=c[i])
+        plt.plot(centers[i,:,0], centers[i,:,1], '.', c='k')
 
     plt.text(-4.8, 4.6, "epoch=%d" % epoch)
 
     if not os.path.isdir('./images/'):  
         os.makedirs('./images/')
-    plt.savefig('./images/'+args.loss+'_'+args.dataset+'_'+str(args.use_dot_product)+'_epoch=%d.jpg' % epoch, dpi = 250)
+    plt.savefig('./images/'+args.loss+'_'+args.dataset+'_'+str(args.use_dot_product)+'_'+str(args.num_protos)+'_epoch=%d.jpg' % epoch,\
+     dpi = 250)
     plt.close()
 
 ##################################################
@@ -311,8 +312,8 @@ def evaluation_softmax(logits, labels):
 def construct_center(features, num_classes, class_n, flags):
     len_features = features.get_shape()[1]
     centers = tf.get_variable('centers'+str(class_n), [flags.num_protos, len_features], dtype=tf.float32,\
-        # initializer=tf.constant_initializer(0.1*class_n))
-        initializer=tf.constant_initializer(0))
+        initializer=tf.constant_initializer(0.1*class_n))
+        # initializer=tf.constant_initializer(0))
     return centers
 
 # operations used to initialize the prototypes in

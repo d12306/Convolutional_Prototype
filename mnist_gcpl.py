@@ -15,6 +15,16 @@ from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("./MNIST_data", one_hot=False)
 FLAGS = None
 
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 # compute accuracy on the test dataset
 def do_eval(sess, eval_correct, images, labels, test_x, test_y):
     true_count = 0.0
@@ -60,7 +70,6 @@ def compute_centers(sess, add_op, count_op, average_op, images_placeholder, labe
 
 
 def run_training():
-
     # load the data
     print (150*'*')
     if FLAGS.dataset == 'mnist':
@@ -163,6 +172,11 @@ def run_training():
             features, logits = densenet_bc(images, num_classes = FLAGS.num_classes,is_training = True, growth_rate = 12,drop_rate = 0,\
             	depth = 100, for_imagenet = False, reuse = False, scope='test')
             # inference(images, FLAGS.num_residual_blocks, reuse=False, weight_decay = FLAGS.weight_decay)
+        elif FLAGS.model == 'resnet':
+            if FLAGS.use_augmentation:
+                augment = data_augmentor(images_new)
+            features, logits = inference(images, FLAGS.num_residual_blocks, FLAGS.num_classes,\
+            	reuse=False, weight_decay = FLAGS.weight_decay)
         else:
             if FLAGS.use_augmentation:
                 augment = data_augmentor(images_new)
@@ -190,6 +204,9 @@ def run_training():
             # reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
             reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             loss = tf.add_n([loss] + reg_losses)#loss + reg_losses
+        if FLAGS.model == 'densenet':
+            reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss = tf.add_n([loss] + reg_losses)#loss + reg_losses
 
         train_op = func.training(loss, FLAGS, lr)
 
@@ -199,6 +216,9 @@ def run_training():
         if FLAGS.model == 'resnet':
             # reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
             # loss = loss + reg_losses
+            reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss = tf.add_n([loss] + reg_losses)#loss + reg_losses
+        if FLAGS.model == 'densenet':
             reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             loss = tf.add_n([loss] + reg_losses)#loss + reg_losses
 
@@ -211,6 +231,7 @@ def run_training():
     saver = tf.train.Saver(max_to_keep=1)
     if FLAGS.restore:
         saver.restore(sess,FLAGS.restore)
+        print('restore the model from: ', FLAGS.restore)
 
     # run the computation graph (train and test process)
     stopping = 0
@@ -244,7 +265,7 @@ def run_training():
             # mask_temp = compute_mask(FLAGS, batch_y)
 
             if FLAGS.loss == 'cpl': 
-                if FLAGS.model == 'resnet':
+                if FLAGS.model == 'resnet' or FLAGS.model == 'densenet':
                     if FLAGS.use_augmentation:
                         batch_x = augment.output(sess, batch_x)
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, reg_losses, centers, features],\
@@ -253,6 +274,7 @@ def run_training():
 
                 else:
                     if FLAGS.use_augmentation:
+                        print('!')
                         batch_x = augment.output(sess, batch_x)
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, centers, features],\
                     feed_dict={images:batch_x, labels:batch_y, lr:learning_rate_temp})
@@ -271,7 +293,7 @@ def run_training():
 
 
             elif FLAGS.loss == 'softmax':
-                if FLAGS.model == 'resnet':
+                if FLAGS.model == 'resnet' or FLAGS.model == 'densenet':
                     if FLAGS.use_augmentation:
                         batch_x = augment.output(sess, batch_x)
 
@@ -291,13 +313,13 @@ def run_training():
             steps += 1
 
         # for visualization. 
-        # if FLAGS.loss == 'cpl' and FLAGS.dataset == 'cifar10':
-        #     if epoch % FLAGS.print_step == 0:
-        #         centers_container = result[-2]
-        #         func.visualize(features_container, label_container, epoch, centers_container, FLAGS)
+        if FLAGS.loss == 'cpl' and FLAGS.dataset == 'mnist':
+            if epoch % 10 == 0:
+                centers_container = result[-2]
+                func.visualize(features_container, label_container, epoch, centers_container, FLAGS)
 
-        if epoch +1 == 150 or epoch +1 == 225:
-        # if (epoch + 1) % FLAGS.decay_step == 0:
+        # if epoch +1 == 150 or epoch +1 == 225:
+        if (epoch + 1) % FLAGS.decay_step == 0:
             stopping += 1
             learning_rate_temp *= FLAGS.decay_rate
             print ("\033[1;31;40mdecay learning rate {}th time!\033[0m".format(stopping))
@@ -309,7 +331,7 @@ def run_training():
         if FLAGS.loss == 'cpl':
             loss_dce = loss_dce / batch_num
             loss_pl = loss_pl / batch_num
-            if FLAGS.model == 'resnet':
+            if FLAGS.model == 'resnet' or FLAGS.model == 'densenet':
                 reg_loss /= batch_num
                 print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f}, reg_loss --> {:.3f},\
                  acc --> {:.3f}%'.format(epoch, loss_now, loss_dce, loss_pl, reg_loss, score_now*100))
@@ -317,7 +339,7 @@ def run_training():
                 print ('epoch {}: training: loss --> {:.3f}, dce_loss --> {:.3f}, pl_loss --> {:.3f},\
                  acc --> {:.3f}%'.format(epoch, loss_now, loss_dce, loss_pl, score_now*100))
         elif FLAGS.loss == 'softmax':
-            if FLAGS.model == 'resnet':
+            if FLAGS.model == 'resnet' or FLAGS.model == 'densenet':
                 reg_loss /= batch_num
                 print ('epoch {}: training: loss --> {:.3f}, reg_loss --> {:.3f},\
                    acc --> {:.3f}%'.format(epoch, loss_now, reg_loss, score_now*100)) 
@@ -361,13 +383,13 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=256, help='batch size for training')
     parser.add_argument('--weight_pl', type=float, default=0.0001, help='the weight for the prototype loss (PL)')
     parser.add_argument('--num_epoches', type=int, default=300, help='the number of the epoches')
-    parser.add_argument('--use_dot_product', type=bool, default=True, help='what metric we use in cpl loss.')
+    parser.add_argument('--use_dot_product', type=str2bool, default=True, help='what metric we use in cpl loss.')
     parser.add_argument('--weight_decay', type=float, default=0.0002, help='weight decay for resnet model.')
     parser.add_argument('--optimizer', type=str, default='MOM', help='optimizer for the model.',\
     	choices=['ADAGRAD', 'ADAM',  'MOM','SGD', 'RMSP'])
-    parser.add_argument('--model', type=str, default='densenet', help='which model to use for training.')
-    parser.add_argument('--use_augmentation', type=bool, default = True, help = 'whether to use data augmentation during training.')
-    parser.add_argument('--decay_rate', type=float, default=0.1, help='decay rate.')
+    parser.add_argument('--model', type=str, default='resnet', help='which model to use for training.')
+    parser.add_argument('--use_augmentation', type=str2bool, default=False, help = 'whether to use data augmentation during training.')
+    parser.add_argument('--decay_rate', type=float, default=0.5, help='decay rate.')
     parser.add_argument('--decay_step', type=float, default=60, help='the steps to decay the learning rate')
     parser.add_argument('--num_classes', type=int, default=100, help='the number of the classes')
 
@@ -381,11 +403,10 @@ if __name__ == '__main__':
     parser.add_argument('--num_residual_blocks', type=int, default=3, help='the number of residual blocks in the resnet.')#Resnet 6n+2
     parser.add_argument('--log_dir', type=str, default='./model', help='where to save the model.')
     parser.add_argument('--restore', type=str, default = '', help = 'whether to restore model.')
-    # parser.add_argument('--use_bn', type=bool, default = True, help = 'whether to use bn.')
 
     
 
-    FLAGS, unparsed = parser.parse_known_args()
+    FLAGS = parser.parse_args()
     print (150*'*')
     print ('Configuration of the training:')
     print ('learning rate:', FLAGS.learning_rate)

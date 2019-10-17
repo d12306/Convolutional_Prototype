@@ -6,7 +6,7 @@ import tensorflow as tf
 import math
 slim = tf.contrib.slim
 
-
+l2_regularizer= tf.contrib.layers.l2_regularizer(0.0002)
 def densenet_arg_scope(weight_decay=0.0001,
                        batch_norm_decay=0.997,
                        batch_norm_epsilon=1e-5,
@@ -74,7 +74,7 @@ def densenet_bc(inputs,
     def single_layer(input, n_out_channels, drop_rate):
 
         conv = slim.batch_norm(input, activation_fn=tf.nn.relu)
-        conv = slim.conv2d(conv, n_out_channels, [3, 3], stride=[1, 1])
+        conv = slim.conv2d(conv, n_out_channels, [3, 3], stride=[1, 1], weights_regularizer = l2_regularizer)
         if drop_rate > 0:
             conv = tf.nn.dropout(conv, drop_rate)
 
@@ -87,12 +87,12 @@ def densenet_bc(inputs,
         inter_channels = 4 * n_output_channels
 
         conv = slim.batch_norm(input, activation_fn=tf.nn.relu)
-        conv = slim.conv2d(conv, inter_channels, [1, 1], stride=[1, 1])
+        conv = slim.conv2d(conv, inter_channels, [1, 1], stride=[1, 1], weights_regularizer = l2_regularizer)
         if drop_rate > 0:
             conv = tf.nn.dropout(conv, drop_rate)
 
         conv = slim.batch_norm(conv, activation_fn=tf.nn.relu)
-        conv = slim.conv2d(conv, n_output_channels, [3, 3], stride=[1, 1])
+        conv = slim.conv2d(conv, n_output_channels, [3, 3], stride=[1, 1], weights_regularizer = l2_regularizer)
         if drop_rate > 0:
             conv = tf.nn.dropout(conv, drop_rate)
 
@@ -108,7 +108,7 @@ def densenet_bc(inputs,
     def transition(input, n_output_channels, drop_rate):
 
         conv = slim.batch_norm(input, activation_fn=tf.nn.relu)
-        conv = slim.conv2d(conv, n_output_channels, [1, 1], stride=[1, 1])
+        conv = slim.conv2d(conv, n_output_channels, [1, 1], stride=[1, 1], weights_regularizer = l2_regularizer)
         if drop_rate > 0:
             conv = tf.nn.dropout(conv, drop_rate)
         conv = slim.avg_pool2d(conv, [2, 2], stride=2)
@@ -123,7 +123,7 @@ def densenet_bc(inputs,
                 net = inputs
 
                 if for_imagenet:
-                    net = slim.conv2d(net, n_channels, [7, 7], stride=2)
+                    net = slim.conv2d(net, n_channels, [7, 7], stride=2, weights_regularizer = l2_regularizer)
                     net = slim.max_pool2d(net, [3, 3], stride=2)
 
                     for i in range(0, 6):
@@ -155,7 +155,7 @@ def densenet_bc(inputs,
                     net = slim.avg_pool2d(net, [7, 7], stride=7)
 
                 else:
-                    net = slim.conv2d(net, n_channels, [3, 3], stride=1)
+                    net = slim.conv2d(net, n_channels, [3, 3], stride=1, weights_regularizer = l2_regularizer)
 
                     for i in range(0, N):
                         net = add(net, growth_rate, drop_rate)
