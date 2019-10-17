@@ -26,13 +26,13 @@ def mnist_net(images):
 
     pool3 = Max_pool(conv6, padding='VALID')
 
-    fc1 = FC(tf.reshape(pool3, [-1, 3*3*128]), 3*3*128, 100)
+
+    fc1 = FC(tf.reshape(pool3, [-1, 3*3*128]), 3*3*128, 2)
     fc1_out = ReLU(fc1)
 
-    logits = FC(fc1_out, 100, 10)
+    logits = FC(fc1_out, 2, 10)
 
     return fc1, logits
-
 ##################################################
 
 # net used for the CIFAR dataset, also appeared in paper:

@@ -187,7 +187,7 @@ def run_training():
     if FLAGS.loss == 'cpl': 
         centers = []
         for i in range(FLAGS.num_classes):
-            centers.append(func.construct_center(features, FLAGS.num_classes, i, FLAGS))
+            centers.append(func.construct_center(features, i, FLAGS))
         centers = tf.stack(centers, 0)
 
         if FLAGS.use_dot_product:
@@ -274,10 +274,10 @@ def run_training():
 
                 else:
                     if FLAGS.use_augmentation:
-                        print('!')
                         batch_x = augment.output(sess, batch_x)
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, centers, features],\
                     feed_dict={images:batch_x, labels:batch_y, lr:learning_rate_temp})
+                    print(result[-2])
 
                 loss_now += result[1]
                 score_now += result[4]
