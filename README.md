@@ -15,7 +15,7 @@ Network for Cifar100 is DenseNet-BC-k-12 (300 epoches) with data augmentation, M
 | -------------------------------------- | ------------- | -------- | 
 | MNIST     | Softmax      |  98.65% | 
 |MNIST| Multi-Proto (1)distance    |  99.63% |
-|MNIST| Multi-Proto (5)distance    |  99.66% |
+|MNIST| Multi-Proto (5)distance    |  99.70% |
 |MNIST| Multi-Proto (10)distance    |  99.66% |
 |MNIST| Multi-Proto (1)dot-product    |  99.36% |
 |MNIST| Multi-Proto (5)dot-product    |  99.22% |
