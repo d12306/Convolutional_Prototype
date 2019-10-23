@@ -15,11 +15,10 @@ def visualize(feat, labels, epoch, centers, args):
         plt.plot(feat[labels == i, 0], feat[labels == i, 1], '.', c=c[i])
         
     plt.legend(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], loc='upper right')
-    c1 = ['k', 'k', 'k', 'k', 'k',
-         'k', 'k', 'k', 'k', 'k']
+
 
     for i in range(10):
-        plt.plot(centers[i,:,0], centers[i,:,1], 'D', c=c[i])
+        plt.plot(centers[i,:,0], centers[i,:,1], '.', c='k')
 
     plt.text(-4.8, 4.6, "epoch=%d" % epoch)
     # import ipdb
@@ -153,7 +152,6 @@ def dce_loss(features, labels, centers, T, flags):
     dist_this_class_max = tf.reshape(dist_this_class_max, (-1,))
     # import ipdb
     # ipdb.set_trace()
-
     condition_indices= tf.dynamic_partition(
         tf.range(flags.num_classes * tf.shape(dist)[0]),\
          tf.cast(tf.reshape(mask, (-1,)), tf.int32), 2)
@@ -173,9 +171,6 @@ def dce_loss(features, labels, centers, T, flags):
     # logits = tf.reshape(logits, (-1,flags.num_classes))
     # logits = -logits / T
     # mean_loss_2 = softmax_loss(logits, labels)
-
-
-
     return mean_loss #+ mean_loss_2
 
 # dot product based cross entropy loss
@@ -313,11 +308,13 @@ def evaluation_softmax(logits, labels):
 
 ##################################################
 # construct prototypes (centers) for each class
-def construct_center(features, class_n, flags):
+def construct_center(features, flags):
     len_features = features.get_shape()[1]
-    centers = tf.get_variable('centers'+str(class_n), [flags.num_protos, len_features], dtype=tf.float32,\
-        # initializer=tf.constant_initializer(0.1*class_n))
-        initializer=tf.constant_initializer(0))
+    centers = tf.get_variable('centers', [flags.num_classes, flags.num_protos, len_features], dtype=tf.float32,\
+        initializer = tf.truncated_normal_initializer(),
+        # initializer = tf.random_normal_initializer(),
+        # initializer=tf.constant_initializer(0.1),
+         trainable = True)
     return centers
 
 # operations used to initialize the prototypes in

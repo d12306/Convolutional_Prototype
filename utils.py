@@ -289,7 +289,7 @@ def inference(input_tensor_batch, n, num_classes, reuse, weight_decay):
         assert global_pool.get_shape().as_list()[-1:] == [64]
         output = output_layer(global_pool, num_classes, weight_decay = weight_decay)
         layers.append(output)
-
+    print(global_pool.shape)
     return global_pool, layers[-1]
 
 

@@ -131,7 +131,8 @@ def run_training():
         if FLAGS.model == 'resnet':
             if FLAGS.use_augmentation:
                 augment = data_augmentor(images_new)
-            features, logits = inference(images, FLAGS.num_residual_blocks, reuse=False, weight_decay = FLAGS.weight_decay)
+            features, logits = inference(images, FLAGS.num_residual_blocks, FLAGS.num_classes,\
+             reuse=False, weight_decay = FLAGS.weight_decay)
         else:
             if FLAGS.use_augmentation:
                 augment = data_augmentor(images_new)
@@ -185,10 +186,7 @@ def run_training():
     # import ipdb
     # ipdb.set_trace()
     if FLAGS.loss == 'cpl': 
-        centers = []
-        for i in range(FLAGS.num_classes):
-            centers.append(func.construct_center(features, i, FLAGS))
-        centers = tf.stack(centers, 0)
+        centers = func.construct_center(features, FLAGS)
 
         if FLAGS.use_dot_product:
             loss1 = func.dot_dce_loss(features, labels, centers, FLAGS.temp, FLAGS)
@@ -214,8 +212,6 @@ def run_training():
         loss = func.softmax_loss(logits, labels)
         eval_correct = func.evaluation_softmax(logits, labels)
         if FLAGS.model == 'resnet':
-            # reg_losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-            # loss = loss + reg_losses
             reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             loss = tf.add_n([loss] + reg_losses)#loss + reg_losses
         if FLAGS.model == 'densenet':
@@ -271,6 +267,7 @@ def run_training():
                     result = sess.run([train_op, loss, loss1, loss2, eval_correct, reg_losses, centers, features],\
                     feed_dict={images:batch_x, labels:batch_y, lr:learning_rate_temp})
                     reg_loss += np.sum(result[5])
+                    # print(result[-2])
 
                 else:
                     if FLAGS.use_augmentation:
@@ -323,7 +320,6 @@ def run_training():
             stopping += 1
             learning_rate_temp *= FLAGS.decay_rate
             print ("\033[1;31;40mdecay learning rate {}th time!\033[0m".format(stopping))
-
 
         score_now /= train_num
         loss_now /= batch_num
@@ -395,7 +391,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--dataset', type=str, default='mnist', help='which kind of data we use')
     parser.add_argument('--stop', type=int, default=np.inf, help='stopping number')
-    parser.add_argument('--temp', type=float, default=1.0, help='the temperature used for calculating the loss')
+    parser.add_argument('--temp', type=float, default=5.0, help='the temperature used for calculating the loss')
     parser.add_argument('--gpu', type=int, default=1, help='the gpu id for use')    
     parser.add_argument('--num_protos', type=int, default=5, help='the number of the protos')
     parser.add_argument('--print_step', type=int, default=1, help='the number steps for printing.')
