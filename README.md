@@ -5,7 +5,7 @@ Note that if we use the dot product as the comparison metric, the prototype loss
 
 model structure: nets.py. Network for MNIST is the same as this [CVPR2018 paper](https://github.com/YangHM/Convolutional-Prototype-Learning), Momentum optimizer, initial lr 0.1, decay step 60 (by 0.5) to train the distance based multi prototype loss. Adam 3e-4 to train the softmax loss. 
 
-Network for Cifar10 is ResNet-20 (300 epoches) with data augmentation, Momentum optimizer, initial lr 0.1, decay step 60 (by 0.5) to train the softmax loss and the distance based multi prototype loss (also with weight decay 0.0002).
+Network for Cifar10 is ResNet-20 (with double filters, 300 epoches) with data augmentation, Momentum optimizer, initial lr 0.1, decay step 60 (by 0.5) to train the softmax loss and the distance based multi prototype loss (also with weight decay 0.0002).
 
 Network for Cifar100 is ResNet-56 (300 epoches) with data augmentation, Momentum optimizer, initial lr 0.1, decay step 150 and 225 (by 0.1) to train the softmax loss and the distance based multi prototype loss. 
 
@@ -20,13 +20,13 @@ Network for Cifar100 is ResNet-56 (300 epoches) with data augmentation, Momentum
 |MNIST| Multi-Proto (1)dot-product    |  99.62% |
 |MNIST| Multi-Proto (5)dot-product    |  99.69% |
 |MNIST| Multi-Proto (10)dot-product     |99.70%   |
-| Cifar10    | Softmax      | 90.86%  |
-|Cifar10| Multi-Proto (1)distance   | 90.73%  |
-|Cifar10| Multi-Proto (5)distance   | 90.96%  |
-|Cifar10| Multi-Proto (10)distance   |  90.96% |
-|Cifar10| Multi-Proto (1)dot-product  | 90.86% |
-|Cifar10| Multi-Proto (5)dot-product    |  91.13%|
-|Cifar10| Multi-Proto (10)dot-product   |91.05% |
+| Cifar10    | Softmax      | 93.27%  |
+|Cifar10| Multi-Proto (1)distance   | 93.31%  |
+|Cifar10| Multi-Proto (5)distance   | 92.41%  |
+|Cifar10| Multi-Proto (10)distance   |  91.79% |
+|Cifar10| Multi-Proto (1)dot-product  | 93.66% |
+|Cifar10| Multi-Proto (5)dot-product    |  91.80%|
+|Cifar10| Multi-Proto (10)dot-product   |91.32% |
 | Cifar100     | Softmax       |   | 
 |Cifar100| Multi-Proto (1)-distance    |   |
 |Cifar100| Multi-Proto (5)-distance    |  |
