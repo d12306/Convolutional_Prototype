@@ -29,8 +29,8 @@ Network for Cifar100 is ResNet-56 (with double filters, 300 epoches) with data a
 |Cifar10| Multi-Proto (10)dot-product   |91.32% |
 | Cifar100     | Softmax       |   73.31%| 
 |Cifar100| Multi-Proto (1)-distance    | 72.64%  |
-|Cifar100| Multi-Proto (5)-distance    |  |
-|Cifar100| Multi-Proto (10)-distance    |   |
+|Cifar100| Multi-Proto (5)-distance    | 71.95% |
+|Cifar100| Multi-Proto (10)-distance    | 70.96%  |
 |Cifar100| Multi-Proto (1)dot-product  | 73.90%|
 |Cifar100| Multi-Proto (5)dot-product    | 71.34% |
 |Cifar100| Multi-Proto (10)dot-product   |71.31% |
